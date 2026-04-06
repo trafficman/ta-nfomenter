@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  ta-nfomenter-dev:
+    image: python:3.11-slim
+    container_name: ta-nfomenter-dev
+    ports:
+      - 2960:2960
+    volumes:
+#     Path to project source
+      - /external/path/to/project/source/ta-nfomenter-dev:/ta-nfomenter-dev
+#     IMPORTANT: Host folder that contains BOTH your Source (TubeArchivist "/youtube" and "/cache" folders) AND desired Destination folder
+#     Hardlinks will NOT work otherwise, and will instead function as a file copy, doubling storage space used
+#     Environment paths (further down) MUST be relative to this mount point, it may be easier to duplicate the host path inside the container
+#     e.g. If your host folder is "/mnt/nas", then make the internal mount point the same ("/mnt/nas:/mnt/nas") so interal relative paths end up mirrored
+      - /external/path/to/host/folder/containing/source/and/destination:/files
+    working_dir: /ta-nfomenter-dev
+    command: >
+      sh -c "pip install -r requirements.txt && python run.py"
+    environment:
+#       These can be hardcoded if you're lazy, but storing them in a secrets .env file is the proper way
+#       NOTE: TA_URL may need to be the IP address (e.g. "http://127.0.0.1:9000"), I had some problems using my reverse proxied local domain
+      - TA_URL=${TA_URL}
+      - TA_TOKEN=${TA_TOKEN}
+#       RELATIVE path to Destination directory (Where you want your "TV Show" folders to be created), cannot be the folder where TA stores its videos
+      - DEST_DIR=/internal/path/to/DESTINATION
+#       RELATIVE path to Source directory (Where your TubeArchivist videos are stored), usually ends in "/youtube"
+      - SOURCE_DIR=/internal/path/to/SOURCE
+#       RELATIVE path to video thumbnail cache, usually ends in "/cache/videos"
+      - CACHE_VID=/internal/path/to/video/image/cache
+#       RELATIVE path to channel image cache, usually ends in "/cache/channels"
+      - CACHE_CH=/internal/path/to/channel/image/cache

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NFOmenter | {% block title %}{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Shared Scrollbar styling */
+        .sync-scroll::-webkit-scrollbar { width: 4px; }
+        .sync-scroll::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+        
+        /* Shared Zebra striping & Row hover */
+        .item-row:nth-child(even) { background-color: rgba(255, 255, 255, 0.02); }
+        .item-row { border-bottom: 1px solid rgba(55, 65, 81, 0.4); transition: background 0.2s; }
+        .item-row:hover { background-color: rgba(59, 130, 246, 0.1) !important; }
+
+        .selected-item { background-color: rgba(59, 130, 246, 0.2) !important; border-left: 4px solid #3b82f6; }
+        .is-dimmed { opacity: 0.3; filter: grayscale(100%); }
+        .is-dimmed input { pointer-events: auto !important; }
+
+        .tri { display: inline-block; transition: transform 0.2s; font-size: 0.7rem; cursor: pointer; padding: 0 4px; }
+        .tri.open { transform: rotate(90deg); }
+        
+        /* Typography & Shared Inputs */
+        .mono-text { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 13px; }
+        .label-text { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #6b7280; margin-bottom: 2px; display: block; }
+        .input-base { width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 4px; padding: 4px 8px; color: white; outline: none; }
+        .input-base:focus { border-color: #3b82f6; }
+        
+        {% block extra_style %}{% endblock %}
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 h-screen flex flex-col overflow-hidden">
+    <header class="p-3 bg-gray-800 border-b border-gray-700 flex justify-between items-center z-50">
+        <div class="flex items-center space-x-6">
+            <h1 class="text-xl font-bold text-red-500">NFOmenter</h1>
+            <nav class="flex space-x-4 text-xs font-bold uppercase tracking-wider items-center">
+                <a href="/" class="text-blue-400 hover:text-blue-300 pb-1">Single-Channel Editor</a>
+                <!-- <a href="/aggregator" class="text-gray-500 hover:text-gray-300">Multi-Channel Aggregator</a> -->
+                
+                <!-- Maintenance Dropdown -->
+                <div class="relative group">
+                    <button class="text-gray-500 hover:text-gray-300 flex items-center focus:outline-none pb-1">
+                        MAINTENANCE <span class="ml-1 text-[8px]">▼</span>
+                    </button>
+                    <div class="absolute left-0 mt-0 w-48 bg-gray-800 border border-gray-700 rounded shadow-xl hidden group-hover:block z-50">
+                        <a href="#" onclick="startMaintenanceTask('deletion'); return false;" class="block px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">Deletion Sync</a>
+                        <a href="#" onclick="startMaintenanceTask('folder'); return false;" class="block px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors border-t border-gray-700">Folder Name Sync</a>
+                    </div>
+                </div>
+            </nav>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span id="status-msg" class="text-xs text-gray-500"></span>
+            {% block header_actions %}{% endblock %}
+        </div>
+    </header>
+
+    {% block content %}{% endblock %}
+
+    <!-- Maintenance Modal -->
+    <div id="maintenanceModal" class="hidden fixed inset-0 bg-black/80 z-[100] flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-gray-800 border border-gray-700 rounded-lg shadow-2xl w-full max-w-2xl p-6 relative">
+            <h3 id="modalTitle" class="text-xl font-bold text-gray-100 border-b border-gray-700 pb-3">Maintenance</h3>
+            
+            <div class="mt-4 min-h-[150px]">
+                <p class="text-gray-400 text-sm mb-4">
+                    This tool scans TubeArchivist (Source) and removes videos from NFOmenter (Database/Destination) that no longer exist on the source.
+                </p>
+
+                <!-- Loader -->
+                <div id="scanLoader" class="hidden flex flex-col items-center justify-center py-8">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                    <span class="mt-3 text-blue-400 font-mono text-sm animate-pulse">Scanning filesystem...</span>
+                </div>
+
+                <!-- Results -->
+                <div id="scanResults" class="hidden space-y-4">
+                    <div id="resultsContainer" class="hidden bg-red-900/20 border border-red-900/50 rounded p-4">
+                        <h4 id="resultsHeader" class="text-red-400 font-bold uppercase text-xs mb-3">⚠️ Missing Items Detected</h4>
+                        
+                        <div id="channelSection" class="hidden mb-4">
+                            <span id="chanSectionLabel" class="text-xs font-bold text-gray-500 uppercase">Channels:</span>
+                            <ul id="delChannels" class="list-disc pl-5 text-sm text-red-300 font-mono mt-1"></ul>
+                        </div>
+                        
+                        <div id="videoSection" class="hidden">
+                            <span id="vidSectionLabel" class="text-xs font-bold text-gray-500 uppercase">Videos:</span>
+                            <ul id="delVideos" class="list-disc pl-5 text-sm text-red-300 font-mono mt-1 max-h-48 overflow-y-auto"></ul>
+                        </div>
+                    </div>
+
+                    <div id="noDeletionsMsg" class="hidden text-center py-6">
+                        <div class="text-green-500 text-4xl mb-2">✓</div>
+                        <p class="text-green-400 font-bold">Sync Complete</p>
+                        <p class="text-gray-500 text-sm">No deleted items found on source.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-700">
+                <button id="closeMaintBtn" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded text-sm font-bold transition-colors">CLOSE</button>
+                <button id="confirmDelBtn" class="hidden px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded text-sm font-bold transition-colors shadow-lg shadow-red-900/20">CONFIRM DELETIONS</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Maintenance Modal Logic
+        const modal = document.getElementById('maintenanceModal');
+        const closeBtn = document.getElementById('closeMaintBtn');
+        const confirmBtn = document.getElementById('confirmDelBtn');
+        const scanResults = document.getElementById('scanResults');
+        const loader = document.getElementById('scanLoader');
+        const resultsContainer = document.getElementById('resultsContainer');
+
+        let activeTask = 'deletion';
+        const tasks = {
+            deletion: { url: '/api/scan_deletions', title: 'Deletion Sync (Source Mirror)', header: '⚠️ Missing Items Detected', chanLabel: 'Channels to Delete:', vidLabel: 'Videos to Delete:' },
+            folder: { url: '/api/sync_folders', title: 'Folder Name Sync', header: '📁 Misnamed Folders Detected', chanLabel: 'Renames Found:', vidLabel: 'Actions:' }
+        };
+
+        closeBtn.addEventListener('click', () => { modal.classList.add('hidden'); resetModal(); });
+        confirmBtn.addEventListener('click', () => runScan(false));
+
+        window.startMaintenanceTask = function(taskType) {
+            activeTask = taskType;
+            const t = tasks[taskType];
+            document.getElementById('modalTitle').innerText = t.title;
+            document.getElementById('resultsHeader').innerText = t.header;
+            document.getElementById('chanSectionLabel').innerText = t.chanLabel;
+            document.getElementById('vidSectionLabel').innerText = t.vidLabel;
+            
+            modal.classList.remove('hidden');
+            runScan(true); // Default to Dry Run
+        };
+
+        function resetModal() {
+            scanResults.classList.add('hidden');
+            confirmBtn.classList.add('hidden');
+            resultsContainer.classList.add('hidden');
+            document.getElementById('channelSection').classList.add('hidden');
+            document.getElementById('videoSection').classList.add('hidden');
+            document.getElementById('delChannels').innerHTML = '';
+            document.getElementById('delVideos').innerHTML = '';
+            document.getElementById('noDeletionsMsg').classList.add('hidden');
+        }
+
+        async function runScan(dryRun) {
+            loader.classList.remove('hidden');
+            if (dryRun) resetModal();
+            else {
+                confirmBtn.disabled = true;
+                confirmBtn.innerText = "DELETING...";
+                confirmBtn.classList.add('opacity-50');
+            }
+
+            try {
+                const r = await fetch(tasks[activeTask].url, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ dry_run: dryRun })
+                });
+                const data = await r.json();
+
+                loader.classList.add('hidden');
+                if (data.status === 'success') {
+                    if (dryRun) renderReport(data.report);
+                    else {
+                        alert("Sync complete! Database updated.");
+                        location.reload();
+                    }
+                } else alert("Error: " + data.message);
+            } catch (e) {
+                console.error(e);
+                loader.classList.add('hidden');
+                alert("Network error.");
+            } finally {
+                if (!dryRun) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerText = "CONFIRM DELETIONS";
+                    confirmBtn.classList.remove('opacity-50');
+                }
+            }
+        }
+
+        function renderReport(report) {
+            scanResults.classList.remove('hidden');
+            const chList = document.getElementById('delChannels');
+            const vidList = document.getElementById('delVideos');
+            let hasItems = false;
+
+            if (Array.isArray(report)) {
+                // Handle simple list report (Folder Sync)
+                if (report.length > 0) {
+                    document.getElementById('videoSection').classList.remove('hidden');
+                    resultsContainer.classList.remove('hidden');
+                    report.forEach(msg => {
+                        const li = document.createElement('li'); li.textContent = msg; vidList.appendChild(li);
+                    });
+                    hasItems = true;
+                }
+            } else {
+                // Handle object report (Deletion Sync)
+            if (report.channels && report.channels.length > 0) {
+                document.getElementById('channelSection').classList.remove('hidden');
+                resultsContainer.classList.remove('hidden');
+                report.channels.forEach(name => {
+                    const li = document.createElement('li'); li.textContent = name; chList.appendChild(li);
+                });
+                hasItems = true;
+            }
+
+            if (report.videos && report.videos.length > 0) {
+                document.getElementById('videoSection').classList.remove('hidden');
+                resultsContainer.classList.remove('hidden');
+                report.videos.forEach(name => {
+                    const li = document.createElement('li'); li.textContent = name; vidList.appendChild(li);
+                });
+                hasItems = true;
+            }
+            }
+
+            if (hasItems) confirmBtn.classList.remove('hidden');
+            else document.getElementById('noDeletionsMsg').classList.remove('hidden');
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

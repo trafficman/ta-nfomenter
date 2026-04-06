@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Database (SQLite)
+*.db
+*.sqlite3
+data/
+
+# Environment / Config
+.env
+venv/
+
+# OS / Editor
+.vscode/
+Thumbs.db
