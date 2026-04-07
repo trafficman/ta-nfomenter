@@ -12,8 +12,11 @@ services:
 #     Environment paths (further down) MUST be relative to this mount point, it may be easier to duplicate the host path inside the container
 #     e.g. If your host folder is "/mnt/nas", then make the internal mount point the same ("/mnt/nas:/mnt/nas") so interal relative paths end up mirrored
       - /external/path/to/host/folder/containing/source/and/destination:/files
+#     Persist the SQLite database and app data, default location will place data folder on the host in the same location as this compose.yml
+#     Change to "data:/ta-nfomenter-dev/data" if you prefer that Docker manage volumes itself
+      - ./data:/ta-nfomenter-dev/data
     environment:
-#       These can be hardcoded if you're lazy, but storing them in a secrets .env file is the proper way
+#       These can be hardcoded or in a separate .env if you're lazy, but storing them in a secrets file is the proper way
 #       NOTE: TA_URL may need to be the IP address (e.g. "http://127.0.0.1:9000"), I had some problems using my reverse proxied local domain
       - TA_URL=${TA_URL}
       - TA_TOKEN=${TA_TOKEN}
