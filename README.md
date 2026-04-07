@@ -1,4 +1,6 @@
 # **NFOmenter, a TubeArchivist Media Management Suite**
+<img width="1263" height="944" alt="image" src="https://github.com/user-attachments/assets/70d29529-a2b4-4a60-ba4c-d78f98dacf3a" />
+
 NFOmenter, at its core, is a way to selectively convert (and edit) a [TubeArchivist](https://github.com/tubearchivist/tubearchivist) install into a folder of custom TV shows that most media servers can ingest. It takes the YouTube metadata stored in your TA and uses it to write a parallel human-readable folder structure with .nfo local metadata files and images that things like Plex, Jellyfin, Emby, Kodi, etc will read.
 
 A mirrored dual pane editor, with the TA ("Source") metadata on the right, and the modified custom TV Show metadata ("Destination") on the left, allows you to compare the two, see what changes you have made, and easily revert them.
@@ -45,30 +47,35 @@ Better instructions coming soon, but I've probably put at least enough documenta
 
 ## **Usage**
 
-tl;dr: Load WebUI, toggle on desired channels, press "Sync TA", expand synced channel video lists, click on items (channel or video) and modify as needed (clicking "Stage Changes" for EACH individual item), once done press "Run Export", point media servers at Destination folder, enjoy your new "TV Shows"
+**TL;DR**: Load WebUI, toggle on desired channels, press "Sync TA", expand synced channel video lists, click on items (channel or video) and modify as needed (clicking "Stage Changes" for **EACH** individual item), once done press "Run Export", point media servers at Destination folder, enjoy your new "TV Shows"
 
 ### Step 0:
 Visit the WebUI in a browser (if hosted locally, should be located at something like "http://localhost:2960"), on page load, NFOmenter will query the TubeArchivist API and populate the right Source pane with all available channels.
 
 ### Step 1:
 Click the toggle box on the right for each channel you wish to Export as a TV show.
-<screenshot of several channels toggled on>
+
+<img width="523" height="498" alt="image" src="https://github.com/user-attachments/assets/e555726e-2806-4a45-b980-32f35636be9c" />
 
 ### Step 2:
 Once desired channels are selected, press the blue "Sync TA" button.
-<screenshot of Sync TA button>
+
+<img width="104" height="43" alt="image" src="https://github.com/user-attachments/assets/21ecf6f7-3ce7-4c98-9c20-87718233b4a0" />
 
 ### Step 3:
 Text next to the button should briefly appear saying "Syncing...", it is now grabbing the list of archived videos for each desired channel (plus associated metadata). Once it completes, click one of the blue triangles to the left of a synced channel to expand its list of videos and confirm that the sync was successful.
-<screenshot of expanded channel>
+
+<img width="631" height="456" alt="image" src="https://github.com/user-attachments/assets/4c6743b7-6a63-476f-8201-5dd930248977" />
 
 ### Step 4:
 With a channel or video selected, in the lower left will be the editing panel. Apply any desired modifications (Change titles, plots, studio, etc), and, **IMPORTANT**, before clicking another item, press the big green "Stage Changes" button. Modifications will be lost if "Stage Changes" is not pressed for each item.
-<screenshot of editing panel>
+
+<img width="630" height="320" alt="image" src="https://github.com/user-attachments/assets/f82174f7-ea46-404a-a25c-ae6ed22182e2" />
 
 ### Step 5:
 Once you've completed picking and/or modifying the channels and videos you want to include in your Destination TV shows folder, in the upper right, click the green "Run Export" button (it may take a while to complete, just let it run until the "Exporting..." text is replaced with "Export Finished!"). NFOmenter will create all the appropriate TV Shows with their associated metadata files and images, check your Destination folder to make sure everything looks right. Finally, point your media server of choice at this folder and enjoy!
-<screenshot of Destination folder>
+
+<img width="210" height="308" alt="image" src="https://github.com/user-attachments/assets/7562f2be-4cc2-4969-9b84-3afadeade723" />
 
 ### Maintenance Menu:
 - **Deletion Sync**: Queries TubeArchivist looking for videos or channels that have been deleted since the last sync. If any are found, they will be shown in the UI and you will be asked for confirmation before their hardlinks are deleted from the Destination folder. Relegated to a manual maintence task because it's very I/O intensive, and to ensure a human is in the loop before any files are deleted.
