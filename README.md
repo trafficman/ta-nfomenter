@@ -1,5 +1,6 @@
 # **NFOmenter, a TubeArchivist Media Management Suite**
-<img width="1263" height="944" alt="image" src="https://github.com/user-attachments/assets/70d29529-a2b4-4a60-ba4c-d78f98dacf3a" />
+
+<img width="1264" height="945" alt="image" src="https://github.com/user-attachments/assets/f74d43c2-8ee0-4718-920e-a44b961d3dac" />
 
 NFOmenter, at its core, is a way to selectively convert (and edit) a [TubeArchivist](https://github.com/tubearchivist/tubearchivist) install into a folder of custom TV shows that most media servers can ingest. It takes the YouTube metadata stored in your TA and uses it to write a parallel human-readable folder structure with .nfo local metadata files and images that things like Plex, Jellyfin, Emby, Kodi, etc will read.
 
