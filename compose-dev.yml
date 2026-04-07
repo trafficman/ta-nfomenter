@@ -18,7 +18,7 @@ services:
     command: >
       sh -c "pip install -r requirements.txt && python run.py"
     environment:
-#       These can be hardcoded if you're lazy, but storing them in a secrets .env file is the proper way
+#       These can be hardcoded if you're lazy, but storing them in a secrets file is the proper way
 #       NOTE: TA_URL may need to be the IP address (e.g. "http://127.0.0.1:9000"), I had some problems using my reverse proxied local domain
       - TA_URL=${TA_URL}
       - TA_TOKEN=${TA_TOKEN}

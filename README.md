@@ -1,12 +1,14 @@
 # **NFOmenter, a TubeArchivist Media Management Suite**
-NFOmenter, at its core, is a way to selectively convert (and edit) a TubeArchivist install into a folder of custom TV shows that most media servers can ingest. It takes the YouTube metadata stored in your TA and uses it to write a parallel human-readable folder structure with Kodi formatted XML .nfo local metadata files and images that things like Plex, Jellyfin, Emby, Kodi, etc will read.
+NFOmenter, at its core, is a way to selectively convert (and edit) a [TubeArchivist](https://github.com/tubearchivist/tubearchivist) install into a folder of custom TV shows that most media servers can ingest. It takes the YouTube metadata stored in your TA and uses it to write a parallel human-readable folder structure with .nfo local metadata files and images that things like Plex, Jellyfin, Emby, Kodi, etc will read.
 
 A mirrored dual pane editor, with the TA ("Source") metadata on the right, and the modified custom TV Show metadata ("Destination") on the left, allows you to compare the two, see what changes you have made, and easily revert them.
+
+If you find any bugs, make an issue here (**not** the official TA github) or hit me up on discord.
 
 AI Disclaimer: Gemini inked 95% of this code, with architectural decisions and every line reviewed by me (a very amateur coder, so don't expect too much), how vibecoded you consider this depends on how much you trust my ability to sight-read python
 
 ## **Features**
-- **Remotely Deployable:** Deploys via Docker and controlled via api, easily integrating into any TA environment, whether local or not.
+- **Remotely Deployable:** Deploys via Docker and controlled via api, easily integrating into any TA environment, whether local or remote.
 - **Web Based Editor:** Simple dual-pane editor, select the channels (and then, videos) you want to convert into TV shows on the right ("Source") pane, edit them on the left ("Destination") pane.
 - **Human Readable Folder Structure:** Output ("Destination") is human readable, channel folders and videos inherit their YouTube titles, making for easy navigation at the file level.
 - **Uses No Hard Drive Space:** Uses hardlinks rather than file copies so that original TA files may be duplicated and renamed without taking up additional space (however, there are important install instructions to ensure this).
@@ -39,11 +41,38 @@ AI Disclaimer: Gemini inked 95% of this code, with architectural decisions and e
 
 ## **Install**
 
-Instructions coming soon
+Better instructions coming soon, but I've probably put at least enough documentation in [compose.yml](compose.yml) comments for the technically inclined to figure it out
 
 ## **Usage**
 
-Instructions coming soon
+tl;dr: Load WebUI, toggle on desired channels, press "Sync TA", expand synced channel video lists, click on items (channel or video) and modify as needed (clicking "Stage Changes" for EACH individual item), once done press "Run Export", point media servers at Destination folder, enjoy your new "TV Shows"
+
+### Step 0:
+Visit the WebUI in a browser (if hosted locally, should be located at something like "http://localhost:2960"), on page load, NFOmenter will query the TubeArchivist API and populate the right Source pane with all available channels.
+
+### Step 1:
+Click the toggle box on the right for each channel you wish to Export as a TV show.
+<screenshot of several channels toggled on>
+
+### Step 2:
+Once desired channels are selected, press the blue "Sync TA" button.
+<screenshot of Sync TA button>
+
+### Step 3:
+Text next to the button should briefly appear saying "Syncing...", it is now grabbing the list of archived videos for each desired channel (plus associated metadata). Once it completes, click one of the blue triangles to the left of a synced channel to expand its list of videos and confirm that the sync was successful.
+<screenshot of expanded channel>
+
+### Step 4:
+With a channel or video selected, in the lower left will be the editing panel. Apply any desired modifications (Change titles, plots, studio, etc), and, **IMPORTANT**, before clicking another item, press the big green "Stage Changes" button. Modifications will be lost if "Stage Changes" is not pressed for each item.
+<screenshot of editing panel>
+
+### Step 5:
+Once you've completed picking and/or modifying the channels and videos you want to include in your Destination TV shows folder, in the upper right, click the green "Run Export" button (it may take a while to complete, just let it run until the "Exporting..." text is replaced with "Export Finished!"). NFOmenter will create all the appropriate TV Shows with their associated metadata files and images, check your Destination folder to make sure everything looks right. Finally, point your media server of choice at this folder and enjoy!
+<screenshot of Destination folder>
+
+### Maintenance Menu:
+- **Deletion Sync**: Queries TubeArchivist looking for videos or channels that have been deleted since the last sync. If any are found, they will be shown in the UI and you will be asked for confirmation before their hardlinks are deleted from the Destination folder. Relegated to a manual maintence task because it's very I/O intensive, and to ensure a human is in the loop before any files are deleted.
+- **Folder Name Sync**: Manually updates Destination show folder names based on current database info (Channel name, current known "premier" year). At time of writing I'm pretty sure this currently runs on each export, but for optimization reasons this may not remain the case (honestly it was a bit of a lazy bugfix), so a manual trigger is included regardless.
 
 ## **Internal Structure**
 

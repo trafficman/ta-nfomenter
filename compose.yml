@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   ta-nfomenter:
-    image: ghcr.io/trafficman/ta-nfomenter:latest
+    image: ghcr.io/trafficman/ta-nfomenter:main
     container_name: ta-nfomenter
     ports:
       - 2960:2960

@@ -54,7 +54,7 @@ def write_xml(path, root_name, data_dict):
         child.text = str(val) if val is not None else ""
     tree = ET.ElementTree(root)
     ET.indent(tree, space="    ", level=0)
-    tree.write(path, encoding="utf-8", xml_declaration=True)
+    tree.write(str(path), encoding="utf-8", xml_declaration=True)
 
 def get_effective_metadata(item_id, item_type, db_item):
     # This now works because db is imported from .models
