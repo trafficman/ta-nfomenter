@@ -43,6 +43,7 @@ AI Disclaimer: Gemini inked 95% of this code, with architectural decisions and e
         - **Show List:** A new, third column on the far left. Contains the list of desired custom aggregated shows, and a means to add new ones. When a show is selected from the list, the editor pane now reflects that show's currently selected YouTube videos.
   - **LLM Integration:** Integrate with a local LLM to optionally generate episode summaries based on video transcripts.
   - **Database Rebuild:** With a fresh install, given both an existing source and destination, rebuild database modifications by diffing the two. Essentially allow stored files to function as a database backup.
+  - **Properly Document API**
 
 ## **Install**
 
