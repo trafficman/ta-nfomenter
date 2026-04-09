@@ -237,7 +237,7 @@ def sync_channel_folders(dry_run=True):
 
     # 2. Compare against Database
     for chan in Channel.query.filter_by(is_eligible=True).all():
-        # BUG FIX: Use effective metadata (overrides) instead of base chan.name
+        # BUG FIX (#2): Use effective metadata (overrides) instead of base chan.name
         meta = get_effective_metadata(chan.id, 'channel', chan)
         expected_name = f"{sanitize(meta['title'])} ({chan.oldest_year})"
         expected_path = DEST_DIR / expected_name
@@ -255,7 +255,7 @@ def sync_channel_folders(dry_run=True):
             primary = paths.pop(0)
             renamed_log.append(f"Renaming: '{primary.name}' -> '{expected_name}'")
             if not dry_run:
-                try: shutil.move(current_path, expected_path)
+                try: shutil.move(primary, expected_path)
                 except Exception as e: print(f"Rename failed: {e}")
         else:
             # We found the correct folder. Remove it from the list so we don't "clean it up"
