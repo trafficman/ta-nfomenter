@@ -225,28 +225,46 @@ def sync_channel_folders(dry_run=True):
     """
     renamed_log = []
     
-    # 1. Build Map of {UniqueID: CurrentPath} from disk
-    disk_map = {}
+    # 1. Build Map of {UniqueID: [List of Paths]} from disk to detect duplicates
+    disk_map = {} # { "channel_id": [Path1, Path2] }
     if DEST_DIR.exists():
         for item in DEST_DIR.iterdir():
             if item.is_dir():
                 nfo = item / "tvshow.nfo"
                 uid = read_nfo_id(nfo)
                 if uid:
-                    disk_map[uid] = item
+                    disk_map.setdefault(uid, []).append(item)
 
     # 2. Compare against Database
     for chan in Channel.query.filter_by(is_eligible=True).all():
-        expected_name = f"{sanitize(chan.name)} ({chan.oldest_year})"
+        # BUG FIX: Use effective metadata (overrides) instead of base chan.name
+        meta = get_effective_metadata(chan.id, 'channel', chan)
+        expected_name = f"{sanitize(meta['title'])} ({chan.oldest_year})"
         expected_path = DEST_DIR / expected_name
         
-        current_path = disk_map.get(chan.id)
+        paths = disk_map.get(chan.id, [])
+        if not paths:
+            continue
+
+        # 3. Identity & Duplicate Management
+        # Check if we already have a folder that matches the expected path
+        correct_folder = next((p for p in paths if p.resolve() == expected_path.resolve()), None)
         
-        # If found on disk, but name doesn't match expected
-        if current_path and current_path.resolve() != expected_path.resolve():
-            renamed_log.append(f"Moving: '{current_path.name}' -> '{expected_name}'")
+        if not correct_folder:
+            # No folder matches the expected name. Rename the first one we found.
+            primary = paths.pop(0)
+            renamed_log.append(f"Renaming: '{primary.name}' -> '{expected_name}'")
             if not dry_run:
                 try: shutil.move(current_path, expected_path)
                 except Exception as e: print(f"Rename failed: {e}")
+        else:
+            # We found the correct folder. Remove it from the list so we don't "clean it up"
+            paths.remove(correct_folder)
+
+        # 4. Cleanup remaining duplicates (folders with the same UID but wrong names)
+        for extra in paths:
+            renamed_log.append(f"Duplicate found: Removing '{extra.name}' (Matches ID: {chan.id})")
+            if not dry_run:
+                safe_delete_channel_folder(extra, chan.id)
 
     return renamed_log
