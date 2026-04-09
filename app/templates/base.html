@@ -64,8 +64,8 @@
             <h3 id="modalTitle" class="text-xl font-bold text-gray-100 border-b border-gray-700 pb-3">Maintenance</h3>
             
             <div class="mt-4 min-h-[150px]">
-                <p class="text-gray-400 text-sm mb-4">
-                    This tool scans TubeArchivist (Source) and removes videos from NFOmenter (Database/Destination) that no longer exist on the source.
+                <p id="modalDesc" class="text-gray-400 text-sm mb-4">
+                    TASK DESCRIPTION MISSING
                 </p>
 
                 <!-- Loader -->
@@ -116,8 +116,18 @@
 
         let activeTask = 'deletion';
         const tasks = {
-            deletion: { url: '/api/scan_deletions', title: 'Deletion Sync (Source Mirror)', header: '⚠️ Missing Items Detected', chanLabel: 'Channels to Delete:', vidLabel: 'Videos to Delete:' },
-            folder: { url: '/api/sync_folders', title: 'Folder Name Sync', header: '📁 Misnamed Folders Detected', chanLabel: 'Renames Found:', vidLabel: 'Actions:' }
+            deletion: { 
+                url: '/api/scan_deletions', 
+                title: 'Deletion Sync (Source Mirror)', 
+                desc: 'This tool scans TubeArchivist (Source) and removes videos from NFOmenter (Database/Destination) that no longer exist on the Source.',
+                header: '⚠️ Missing Items Detected', chanLabel: 'Channels to Delete:', vidLabel: 'Videos to Delete:' 
+            },
+            folder: { 
+                url: '/api/sync_folders', 
+                title: 'Folder Name Sync', 
+                desc: 'This tool scans the Destination directory for folders that no longer match their database names (e.g. after a title change) and renames or cleans up duplicates.',
+                header: '📁 Misnamed Folders Detected', chanLabel: 'Renames Found:', vidLabel: 'Actions:' 
+            }
         };
 
         closeBtn.addEventListener('click', () => { modal.classList.add('hidden'); resetModal(); });
@@ -127,6 +137,7 @@
             activeTask = taskType;
             const t = tasks[taskType];
             document.getElementById('modalTitle').innerText = t.title;
+            document.getElementById('modalDesc').innerText = t.desc;
             document.getElementById('resultsHeader').innerText = t.header;
             document.getElementById('chanSectionLabel').innerText = t.chanLabel;
             document.getElementById('vidSectionLabel').innerText = t.vidLabel;
