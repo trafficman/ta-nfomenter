@@ -56,8 +56,30 @@ def write_xml(path, root_name, data_dict):
     ET.indent(tree, space="    ", level=0)
     tree.write(str(path), encoding="utf-8", xml_declaration=True)
 
+def get_base_metadata(item_id, item_type, db_item):
+    if item_type == 'channel':
+        return {
+            'title': db_item.name,
+            'year': db_item.oldest_year,
+            'plot': db_item.description,
+            'premiered': db_item.premiered,
+            'studio': db_item.studio,
+            'uniqueid': db_item.id 
+        }
+    else:
+        chan = Channel.query.get(db_item.channel_id)
+        return {
+            'title': db_item.title,
+            'showtitle': chan.name,
+            'season': db_item.season,
+            'episode': db_item.episode,
+            'plot': db_item.description,
+            'aired': db_item.published_at,
+            'studio': chan.studio,
+            'uniqueid': db_item.id
+        }
+
 def get_effective_metadata(item_id, item_type, db_item):
-    # This now works because db is imported from .models
     overrides = {o.field_name: o.new_value for o in MetadataOverride.query.filter_by(target_id=item_id).all()}
     
     if item_type == 'channel':
@@ -70,7 +92,6 @@ def get_effective_metadata(item_id, item_type, db_item):
             'uniqueid': db_item.id 
         }
     else:
-        # Note: using db.session.get() is the modern way if using Flask-SQLAlchemy 3.0+
         chan = Channel.query.get(db_item.channel_id)
         chan_meta = get_effective_metadata(chan.id, 'channel', chan)
         return {

@@ -4,7 +4,7 @@ from flask import Blueprint, render_template, jsonify, request
 from app.models import db, Channel, Video, MetadataOverride
 from app.utils import (
     get_ta_paginated, get_effective_metadata, write_xml, 
-    safe_cleanup_video, safe_delete_channel_folder, scan_for_deletions, sync_channel_folders, 
+    safe_cleanup_video, safe_delete_channel_folder, scan_for_deletions, sync_channel_folders, get_base_metadata,
     nfo_needs_update, sanitize, normalize_text, read_nfo_id, DEST_DIR, SOURCE_DIR, CACHE_CH, CACHE_VID
 )
 
@@ -24,6 +24,9 @@ def index():
             ))
     db.session.commit()
     
+    # Batch fetch title overrides to show custom names in the Modified Layer (left pane)
+    title_overrides = {o.target_id: o.new_value for o in MetadataOverride.query.filter_by(field_name='title').all()}
+
     channels = Channel.query.order_by(Channel.name).all()
     # Sort Newest First
     all_videos = Video.query.order_by(Video.published_at.desc()).all()
@@ -32,7 +35,7 @@ def index():
     for v in all_videos:
         video_map.setdefault(v.channel_id, []).append(v)
 
-    return render_template('editor.html', channels=channels, video_map=video_map)
+    return render_template('editor.html', channels=channels, video_map=video_map, title_overrides=title_overrides)
 
 @editor_bp.route('/api/sync_all', methods=['POST'])
 def sync_all():
@@ -65,9 +68,17 @@ def sync_all():
 @editor_bp.route('/api/get_metadata/<item_id>')
 def get_metadata(item_id):
     chan = Channel.query.get(item_id)
-    if chan: return jsonify(get_effective_metadata(chan.id, 'channel', chan))
+    if chan: 
+        return jsonify({
+            "effective": get_effective_metadata(chan.id, 'channel', chan),
+            "source": get_base_metadata(chan.id, 'channel', chan)
+        })
     vid = Video.query.get(item_id)
-    if vid: return jsonify(get_effective_metadata(vid.id, 'video', vid))
+    if vid: 
+        return jsonify({
+            "effective": get_effective_metadata(vid.id, 'video', vid),
+            "source": get_base_metadata(vid.id, 'video', vid)
+        })
     return jsonify({"error": "not found"}), 404
 
 @editor_bp.route('/api/save_override', methods=['POST'])

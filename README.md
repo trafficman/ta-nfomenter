@@ -23,7 +23,6 @@ AI Disclaimer: Gemini inked 95% of this code, with architectural decisions and e
 - **Short Term:**
   - **Sort Channel List Alphabetically:** Currently sorts lower and upper case separately.
   - **Toggle to Filter Unsynced Channels:** Once desired channels are selected, option to hide all others from the list, making management much easier.
-  - **Offset Toggles to the Left:** Currently, scroll bar can overlap toggle buttons in some instances.
   - **Readme:** Finish it.
   - **Setup Checks:** Ensure compatible paths have been used.
     - Check that placeholder paths have not been used.
