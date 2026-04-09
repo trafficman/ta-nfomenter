@@ -15,8 +15,7 @@
         .item-row:hover { background-color: rgba(59, 130, 246, 0.1) !important; }
 
         .selected-item { background-color: rgba(59, 130, 246, 0.2) !important; border-left: 4px solid #3b82f6; }
-        .is-dimmed { opacity: 0.3; filter: grayscale(100%); }
-        .is-dimmed input { pointer-events: auto !important; }
+        .is-dimmed > *:not(input) { opacity: 0.3; filter: grayscale(100%); }
 
         .tri { display: inline-block; transition: transform 0.2s; font-size: 0.7rem; cursor: pointer; padding: 0 4px; }
         .tri.open { transform: rotate(90deg); }
