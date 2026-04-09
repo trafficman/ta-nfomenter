@@ -1,6 +1,7 @@
 import os
 import shutil
 from flask import Blueprint, render_template, jsonify, request
+from sqlalchemy import func
 from app.models import db, Channel, Video, MetadataOverride
 from app.utils import (
     get_ta_paginated, get_effective_metadata, write_xml, 
@@ -27,7 +28,7 @@ def index():
     # Batch fetch title overrides to show custom names in the Modified Layer (left pane)
     title_overrides = {o.target_id: o.new_value for o in MetadataOverride.query.filter_by(field_name='title').all()}
 
-    channels = Channel.query.order_by(Channel.name).all()
+    channels = Channel.query.order_by(func.lower(Channel.name)).all()
     # Sort Newest First
     all_videos = Video.query.order_by(Video.published_at.desc()).all()
     
