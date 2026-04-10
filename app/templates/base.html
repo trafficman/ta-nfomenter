@@ -36,7 +36,7 @@
             <nav class="flex space-x-4 text-xs font-bold uppercase tracking-wider items-center">
                 <a href="/" class="text-blue-400 hover:text-blue-300 pb-1">Single-Channel Editor</a>
                 <!-- <a href="/aggregator" class="text-gray-500 hover:text-gray-300">Multi-Channel Aggregator</a> -->
-                
+
                 <!-- Maintenance Dropdown -->
                 <div class="relative group">
                     <button class="text-gray-500 hover:text-gray-300 flex items-center focus:outline-none pb-1">
@@ -45,6 +45,19 @@
                     <div class="absolute left-0 mt-0 w-48 bg-gray-800 border border-gray-700 rounded shadow-xl hidden group-hover:block z-50">
                         <a href="#" onclick="startMaintenanceTask('deletion'); return false;" class="block px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">Deletion Sync</a>
                         <a href="#" onclick="startMaintenanceTask('folder'); return false;" class="block px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors border-t border-gray-700">Folder Name Sync</a>
+                    </div>
+                </div>
+
+                <!-- View Dropdown -->
+                <div class="relative group">
+                    <button class="text-gray-500 hover:text-gray-300 flex items-center focus:outline-none pb-1 uppercase">
+                        View <span class="ml-1 text-[8px]">▼</span>
+                    </button>
+                    <div class="absolute left-0 mt-0 w-64 bg-gray-800 border border-gray-700 rounded shadow-xl hidden group-hover:block z-50">
+                        <label class="flex items-center space-x-3 cursor-pointer px-4 py-3 hover:bg-gray-700/50 transition-colors">
+                            <input type="checkbox" id="filter-eligible-toggle" onchange="toggleFilterEligible()" class="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500">
+                            <span class="text-gray-300 text-[10px] font-bold uppercase whitespace-nowrap">Filter Disabled Channels</span>
+                        </label>
                     </div>
                 </div>
             </nav>
@@ -105,6 +118,22 @@
     </div>
 
     <script>
+        // View/Filter Logic
+        function toggleFilterEligible() {
+            const isChecked = document.getElementById('filter-eligible-toggle').checked;
+            localStorage.setItem('filterIneligible', isChecked);
+            document.body.classList.toggle('filter-ineligible-active', isChecked);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const filterSaved = localStorage.getItem('filterIneligible') === 'true';
+            const toggle = document.getElementById('filter-eligible-toggle');
+            if (toggle) {
+                toggle.checked = filterSaved;
+                document.body.classList.toggle('filter-ineligible-active', filterSaved);
+            }
+        });
+
         // Maintenance Modal Logic
         const modal = document.getElementById('maintenanceModal');
         const closeBtn = document.getElementById('closeMaintBtn');

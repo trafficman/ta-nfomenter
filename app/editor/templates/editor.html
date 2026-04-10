@@ -7,6 +7,7 @@
     .panel-column { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
     .scroll-content { flex: 1; overflow-y: auto; padding: 1rem; }
     .plot-textarea { min-height: 150px; flex-grow: 1; line-height: 1.5; }
+    .filter-ineligible-active .ineligible-channel { display: none; }
 {% endblock %}
 
 {% block header_actions %}
@@ -19,7 +20,7 @@
     <section id="left-pane" class="flex-1 border-r border-gray-700 overflow-y-auto sync-scroll bg-gray-900">
         <h2 class="p-2 text-[10px] font-bold text-gray-500 uppercase sticky top-0 bg-gray-900 border-b border-gray-800 z-30">Modified Layer</h2>
         {% for channel in channels %}
-        <div class="channel-group {% if loop.index is even %}bg-white/[0.02]{% endif %}">
+        <div class="channel-group {% if not channel.is_eligible %}ineligible-channel{% endif %} {% if loop.index is even %}bg-white/[0.02]{% endif %}">
             <div id="left-item-{{ channel.id }}" class="item-row p-2 cursor-pointer flex items-center {% if not channel.is_eligible %}is-dimmed{% endif %}" data-id="{{ channel.id }}" onclick="handleItemClick(this)">
                 <span class="tri mr-2 text-gray-600" id="tri-left-{{ channel.id }}" onclick="toggleTree('{{ channel.id }}'); event.stopPropagation();">▶</span>
                 <span class="text-blue-400 mr-2 text-xs">📁</span> <span class="truncate text-sm">{{ title_overrides.get(channel.id, channel.name) }}</span>
@@ -38,7 +39,7 @@
     <section id="right-pane" class="flex-1 overflow-y-auto sync-scroll bg-gray-800/10">
         <h2 class="p-2 text-[10px] font-bold text-gray-500 uppercase sticky top-0 bg-gray-800 border-b border-gray-700 z-30">Source Layer</h2>
         {% for channel in channels %}
-        <div class="channel-group {% if loop.index is even %}bg-white/[0.02]{% endif %}">
+        <div class="channel-group {% if not channel.is_eligible %}ineligible-channel{% endif %} {% if loop.index is even %}bg-white/[0.02]{% endif %}">
             <div id="right-item-{{ channel.id }}" class="item-row p-2 pr-6 flex justify-between items-center cursor-pointer {% if not channel.is_eligible %}is-dimmed{% endif %}" data-id="{{ channel.id }}" onclick="handleItemClick(this)">
                 <div class="flex items-center">
                     <span class="tri mr-2 text-gray-500" id="tri-right-{{ channel.id }}" onclick="toggleTree('{{ channel.id }}'); event.stopPropagation();">▶</span>

@@ -6,7 +6,7 @@
 
 Have you ever wished that your TubeArchivist folder was a little less `/youtube/UCuAXFkgsw1L7xaCfnd5JJOw/dQw4w9WgXcQ.mp4` and a little more `/YouTube/LGR (2009)/Running Doom on a Calculator!.mp4`? Have you ever wished you could sync only a select few of your archived channels to Plex or Jellyfin, or maybe even edit their metadata beforehand? If your answer is yes to either of these, then NFOmenter may be for you!
 
-**NFOmenter**, at its core, is a way to selectively convert a [TubeArchivist](https://github.com/tubearchivist/tubearchivist) install into a folder of custom TV shows that most media servers can ingest. It takes the YouTube metadata stored in your TA and uses it to write a parallel human-readable folder structure with `.nfo` local metadata files and images that things like Plex, Jellyfin, Emby, Kodi, etc will read.
+**NFOmenter**, at its core, is a way to selectively translate a [TubeArchivist](https://github.com/tubearchivist/tubearchivist) install into a folder of custom TV shows that most media servers can ingest. It takes the YouTube metadata stored in your TA and uses it to write a parallel human-readable folder structure with `.nfo` local metadata files and images that things like Plex, Jellyfin, Emby, Kodi, etc will read.
 
 In addition, a mirrored dual pane editor, with the TA ("Source") metadata on the right, and the modified custom TV Show metadata ("Destination") on the left, allows you to compare the two, see what changes you have made, and easily revert them.
 
@@ -15,6 +15,7 @@ If you find any bugs, make an issue here (**NOT** the official TA github), or hi
 AI Disclaimer: Gemini inked 95% of this code, with architectural decisions and every line reviewed by me (a very amateur coder, so don't expect too much), how vibecoded you consider this depends on how much you trust my ability to sight-read python
 
 ## **Features**
+- **Touches Zero TubeArchivist Files:** Leaves your TA files completely intact, only ever reading from them. TA will continue to function as if NFOmenter is not even there.
 - **Remotely Deployable:** Deploys via Docker and controlled via WebUI, easily integrating into any TA environment, whether local or remote.
 - **Web Based Editor:** Simple dual-pane editor, select the channels (and their videos) you want to convert into TV shows on the right ("Source") pane, edit them on the left ("Destination") pane.
 - **Gives Media Servers Everything they Need:** Not just metadata (`.nfo` files), but images (poster, banner, background, thumbnails), and subtitles too, all conveniently pulled from your TA install.
@@ -24,8 +25,6 @@ AI Disclaimer: Gemini inked 95% of this code, with architectural decisions and e
 
 ## **Roadmap**
 - **Short Term:**
-  - **Sort Channel List Alphabetically:** Currently sorts lower and upper case separately.
-  - **Toggle to Filter Unsynced Channels:** Once desired channels are selected, option to hide all others from the list, making management much easier.
   - **Readme:** Finish it.
   - **Setup Checks:** Ensure compatible paths have been used.
     - Check that placeholder paths have not been used.
