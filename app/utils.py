@@ -21,6 +21,54 @@ def sanitize(name):
     for char in r'\/:*?"<>|': name = name.replace(char, "-")
     return " ".join(name.split()).strip()
 
+def is_hardlink_compatible(path1, path2):
+    """
+    Tests if hardlinks can be created between path1 and path2.
+    We attempt an actual link operation because st_dev can be misleading 
+    in virtualized/Docker environments (like Docker Desktop).
+    """
+    try:
+        p1, p2 = Path(path1).resolve(), Path(path2).resolve()
+        
+        # Find any existing file in p1 to use as a link source
+        # next() on a generator is efficient and stops at the first match
+        canary_src = next((f for f in p1.rglob('*') if f.is_file()), None)
+        
+        if not canary_src:
+            # Fallback to device ID comparison if source is empty
+            return p1.stat().st_dev == p2.stat().st_dev
+            
+        test_link = p2 / f".hl_test_{canary_src.name}"
+        try:
+            os.link(canary_src, test_link)
+            os.remove(test_link)
+            return True
+        except OSError:
+            return False
+    except Exception:
+        return False
+
+def is_ta_youtube_structure(path):
+    """
+    Heuristic to detect if a path follows the TubeArchivist /youtube directory structure.
+    1. Checks for a folder starting with 'UC' that is 24 characters long.
+    2. Checks if that folder contains an .mp4 file with a stem exactly 11 characters long.
+    """
+    p = Path(path)
+    if not p.is_dir():
+        return False
+
+    try:
+        for channel_dir in p.iterdir():
+            if channel_dir.is_dir() and channel_dir.name.startswith("UC") and len(channel_dir.name) == 24:
+                # We found a potential channel folder, now look for a video
+                for video_file in channel_dir.glob("*.mp4"):
+                    if len(video_file.stem) == 11:
+                        return True
+    except OSError:
+        pass
+    return False
+
 def get_ta_paginated(endpoint):
     results = []
     url = f"{TA_URL}/{endpoint.lstrip('/')}"
