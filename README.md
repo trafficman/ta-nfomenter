@@ -25,11 +25,7 @@ AI Disclaimer: Gemini inked 95% of this code, with architectural decisions and e
 
 ## **Roadmap**
 - **Short Term:**
-  - **Readme:** Finish it.
-  - **Setup Checks:** Ensure compatible paths have been used.
-    - Check that placeholder paths have not been used.
-    - Check that Source and Destination are not the same folder.
-    - Check that Destination folder does not look like TA `/youtube` folder (ie, that Source and Destination have not been swapped)
+  - **Readme:** Detailed install instructions.
 - **Medium Term:**
   - **Orphan Check:** Scan for orphaned files not found in the database, or otherwise missing their .nfo files.
   - **Handle Channel/Video Name Changes:** Decide what to do about youtube videos which have their metadata change on the TA side.

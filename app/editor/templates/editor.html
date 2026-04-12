@@ -124,26 +124,73 @@
     }
 
     function renderPanes(data, isEligible) {
-        const meta = data.effective;
-        const source = data.source;
+        const meta = data.effective || {};
+        const source = data.source || {};
         const propertyOrder = ['title', 'showtitle', 'season', 'episode', 'aired', 'premiered', 'year', 'studio', 'uniqueid', 'plot'];
-        let mH = '', eH = '<div class="flex flex-col h-full">';
+        
+        const masterPane = document.getElementById('master-pane');
+        const editorPane = document.getElementById('editor-pane');
+        
+        // Clear existing content
+        masterPane.innerHTML = '';
+        editorPane.innerHTML = '';
 
-        propertyOrder.filter(k => k in meta).forEach(tag => {
-            const val = meta[tag] || '';
-            const sVal = source[tag] || '';
+        if (!isEligible) {
+            editorPane.innerHTML = `<div class="h-full flex items-center justify-center text-gray-500 italic">Locked.</div>`;
+            // We still want to show the master metadata even if the editor is locked
+        }
+
+        const editorWrapper = document.createElement('div');
+        editorWrapper.className = 'flex flex-col h-full';
+
+        propertyOrder.forEach(tag => {
+            if (!(tag in meta)) return;
+
+            const val = meta[tag] !== null ? String(meta[tag]) : '';
+            const sVal = source[tag] !== null ? String(source[tag]) : '';
             const isPlot = tag === 'plot';
             const isReadOnly = (tag === 'uniqueid' || tag === 'showtitle'); 
 
-            mH += `<div class="mb-2"><span class="label-text">&lt;${tag}&gt;</span><div class="pl-2 border-l-2 border-gray-700 color-gray-300">${sVal}</div></div>`;
-            const input = isPlot ? `<textarea id="edit-${tag}" class="input-base plot-textarea">${val}</textarea>` :
-                `<input type="text" id="edit-${tag}" ${isReadOnly ? 'disabled' : ''} class="input-base" value="${val}">`;
-            eH += `<div class="mb-2 ${isPlot ? 'flex-1 flex flex-col' : ''}"><span class="label-text ${isReadOnly ? '' : 'text-blue-400'}">&lt;${tag}&gt;</span>${input}</div>`;
+            // --- Build Master Pane Item ---
+            const mItem = document.createElement('div');
+            mItem.className = 'mb-2';
+            mItem.innerHTML = `<span class="label-text">&lt;${tag}&gt;</span>`;
+            const mValDiv = document.createElement('div');
+            mValDiv.className = 'pl-2 border-l-2 border-gray-700 color-gray-300';
+            mValDiv.textContent = sVal; // Safe text assignment
+            mItem.appendChild(mValDiv);
+            masterPane.appendChild(mItem);
+
+            // --- Build Editor Pane Item ---
+            if (isEligible) {
+                const eItem = document.createElement('div');
+                eItem.className = `mb-2 ${isPlot ? 'flex-1 flex flex-col' : ''}`;
+                eItem.innerHTML = `<span class="label-text ${isReadOnly ? '' : 'text-blue-400'}">&lt;${tag}&gt;</span>`;
+                
+                const input = document.createElement(isPlot ? 'textarea' : 'input');
+                input.id = `edit-${tag}`;
+                input.className = `input-base ${isPlot ? 'plot-textarea' : ''}`;
+                if (!isPlot) input.type = 'text';
+                if (isReadOnly) input.disabled = true;
+                input.value = val; // Safe value assignment (fixes quote issues)
+                
+                eItem.appendChild(input);
+                editorWrapper.appendChild(eItem);
+            }
         });
 
-        const spacer = '<div class="h-6 w-full flex-none"></div>';
-        document.getElementById('master-pane').innerHTML = mH + spacer;
-        document.getElementById('editor-pane').innerHTML = isEligible ? (eH + spacer + '</div>') : `<div class="h-full flex items-center justify-center text-gray-500 italic">Locked.</div>`;
+        if (isEligible) {
+            const spacer = document.createElement('div');
+            spacer.className = 'h-6 w-full flex-none';
+            editorWrapper.appendChild(spacer);
+            editorPane.appendChild(editorWrapper);
+        }
+
+        // Final spacer for master pane
+        const mSpacer = document.createElement('div');
+        mSpacer.className = 'h-6 w-full flex-none';
+        masterPane.appendChild(mSpacer);
+
         document.getElementById('editor-save-container').classList.toggle('hidden', !isEligible);
     }
 
