@@ -6,7 +6,7 @@ from app.models import db, Channel, Video, MetadataOverride
 from app.utils import (
     get_ta_paginated, get_effective_metadata, write_xml, 
     safe_cleanup_video, safe_delete_channel_folder, scan_for_deletions, sync_channel_folders, get_base_metadata,
-    nfo_needs_update, sanitize, normalize_text, read_nfo_id, DEST_DIR, SOURCE_DIR, CACHE_CH, CACHE_VID
+    nfo_needs_update, sanitize, normalize_text, read_nfo_id, DEST_DIR, SOURCE_DIR, CACHE_CH, CACHE_VID, get_channel_dest_path
 )
 
 editor_bp = Blueprint('editor', __name__, template_folder='templates')
@@ -139,8 +139,7 @@ def export_nfo():
     
     for chan in all_channels:
         c_meta = get_effective_metadata(chan.id, 'channel', chan)
-        c_name = sanitize(c_meta['title'])
-        show_root = DEST_DIR / f"{c_name} ({chan.oldest_year})"
+        show_root = get_channel_dest_path(chan)
 
         if not chan.is_eligible:
             if show_root.exists():
@@ -162,7 +161,7 @@ def export_nfo():
         for v in videos:
             v_meta = get_effective_metadata(v.id, 'video', v)
             v_title = sanitize(v_meta['title'])
-            base_fn = f"{c_name} - {v_meta['season']}x{v_meta['episode']} - {v_title} [{v.id}]"
+            base_fn = f"{show_root.name} - {v_meta['season']}x{v_meta['episode']} - {v_title} [{v.id}]"
             
             season_dir = show_root / f"Season {v_meta['season']}"
             target_nfo = season_dir / f"{base_fn}.nfo"

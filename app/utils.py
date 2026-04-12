@@ -104,6 +104,34 @@ def write_xml(path, root_name, data_dict):
     ET.indent(tree, space="    ", level=0)
     tree.write(str(path), encoding="utf-8", xml_declaration=True)
 
+def get_folders_by_id():
+    """Returns a map of {UniqueID: [List of Paths]} from DEST_DIR."""
+    disk_map = {}
+    if DEST_DIR.exists():
+        for item in DEST_DIR.iterdir():
+            if item.is_dir():
+                nfo = item / "tvshow.nfo"
+                uid = read_nfo_id(nfo)
+                if uid:
+                    disk_map.setdefault(uid, []).append(item)
+    return disk_map
+
+def get_channel_dest_path(chan):
+    """Determines the intended destination folder path for a channel, handling collisions."""
+    meta = get_effective_metadata(chan.id, 'channel', chan)
+    standard_name = f"{sanitize(meta['title'])} ({chan.oldest_year})"
+    clean_path = DEST_DIR / standard_name
+
+    if not clean_path.exists():
+        return clean_path
+
+    # Check if the existing folder belongs to this channel
+    if read_nfo_id(clean_path / "tvshow.nfo") == chan.id:
+        return clean_path
+
+    # Collision detected (someone else owns the clean path) or already moved to suffixed
+    return DEST_DIR / f"{standard_name} [{chan.id}]"
+
 def get_base_metadata(item_id, item_type, db_item):
     if item_type == 'channel':
         return {
@@ -249,6 +277,7 @@ def scan_for_deletions(dry_run=True):
     2. Videos: Directory Snapshot (Fast I/O, minimizes Disk Seeks).
     """
     deleted_log = {"channels": [], "videos": []}
+    id_map = get_folders_by_id()
     
     # 1. Sync Channels (API is cheaper than checking folders for metadata)
     api_channels = get_ta_paginated("api/channel")
@@ -259,7 +288,8 @@ def scan_for_deletions(dry_run=True):
             deleted_log["channels"].append(db_chan.name)
             if not dry_run:
                 # Remove from Destination
-                safe_delete_channel_folder(DEST_DIR / f"{sanitize(db_chan.name)} ({db_chan.oldest_year})", db_chan.id)
+                for folder in id_map.get(db_chan.id, []):
+                    safe_delete_channel_folder(folder, db_chan.id)
                 # Remove from DB
                 db.session.delete(db_chan)
     
@@ -279,7 +309,8 @@ def scan_for_deletions(dry_run=True):
             if not any(f.startswith(db_vid.id) for f in src_filenames):
                 deleted_log["videos"].append(f"{db_vid.title} [{db_vid.id}]")
                 if not dry_run:
-                    safe_cleanup_video(DEST_DIR / f"{sanitize(db_chan.name)} ({db_chan.oldest_year})", db_vid.id)
+                    for folder in id_map.get(db_chan.id, []):
+                        safe_cleanup_video(folder, db_vid.id)
                     db.session.delete(db_vid)
 
     if not dry_run:
@@ -295,21 +326,12 @@ def sync_channel_folders(dry_run=True):
     renamed_log = []
     
     # 1. Build Map of {UniqueID: [List of Paths]} from disk to detect duplicates
-    disk_map = {} # { "channel_id": [Path1, Path2] }
-    if DEST_DIR.exists():
-        for item in DEST_DIR.iterdir():
-            if item.is_dir():
-                nfo = item / "tvshow.nfo"
-                uid = read_nfo_id(nfo)
-                if uid:
-                    disk_map.setdefault(uid, []).append(item)
+    disk_map = get_folders_by_id()
 
     # 2. Compare against Database
     for chan in Channel.query.filter_by(is_eligible=True).all():
-        # BUG FIX (#2): Use effective metadata (overrides) instead of base chan.name
-        meta = get_effective_metadata(chan.id, 'channel', chan)
-        expected_name = f"{sanitize(meta['title'])} ({chan.oldest_year})"
-        expected_path = DEST_DIR / expected_name
+        expected_path = get_channel_dest_path(chan)
+        expected_name = expected_path.name
         
         paths = disk_map.get(chan.id, [])
         if not paths:
