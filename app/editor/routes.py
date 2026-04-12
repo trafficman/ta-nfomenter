@@ -106,7 +106,13 @@ def save_override():
             'aired': item.published_at
         }
 
+    # Define allowed fields to prevent database bloat/unintended overrides
+    allowed_fields = {'title', 'showtitle', 'season', 'episode', 'plot', 'aired', 'premiered', 'year', 'studio'}
+
     for field, val in data['fields'].items():
+        if field not in allowed_fields:
+            continue
+            
         override = MetadataOverride.query.filter_by(target_id=target_id, field_name=field).first()
         
         # Compare normalized versions to see if user effectively reverted to source
