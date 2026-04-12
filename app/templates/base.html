@@ -45,6 +45,7 @@
                     <div class="absolute left-0 mt-0 w-48 bg-gray-800 border border-gray-700 rounded shadow-xl hidden group-hover:block z-50">
                         <a href="#" onclick="startMaintenanceTask('deletion'); return false;" class="block px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">Deletion Sync</a>
                         <a href="#" onclick="startMaintenanceTask('folder'); return false;" class="block px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors border-t border-gray-700">Folder Name Sync</a>
+                        <a href="#" onclick="startMaintenanceTask('metadata'); return false;" class="block px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors border-t border-gray-700">Refresh Source Metadata</a>
                     </div>
                 </div>
 
@@ -148,13 +149,22 @@
                 url: '/api/scan_deletions', 
                 title: 'Deletion Sync (Source Mirror)', 
                 desc: 'This tool scans TubeArchivist (Source) and removes videos from NFOmenter (Database/Destination) that no longer exist on the Source.',
-                header: '⚠️ Missing Items Detected', chanLabel: 'Channels to Delete:', vidLabel: 'Videos to Delete:' 
+                header: '⚠️ Missing Items Detected', chanLabel: 'Channels to Delete:', vidLabel: 'Videos to Delete:', btnLabel: 'CONFIRM DELETIONS'
             },
             folder: { 
                 url: '/api/sync_folders', 
                 title: 'Folder Name Sync', 
                 desc: 'This tool scans the Destination directory for folders that no longer match their database names (e.g. after a title change) and renames or cleans up duplicates.',
-                header: '📁 Misnamed Folders Detected', chanLabel: 'Renames Found:', vidLabel: 'Actions:' 
+                header: '📁 Misnamed Folders Detected', chanLabel: 'Renames Found:', vidLabel: 'Actions:', btnLabel: 'CONFIRM RENAMES'
+            },
+            metadata: {
+                url: '/api/refresh_metadata',
+                title: 'Refresh Source Metadata',
+                desc: 'This tool fetches the latest metadata from TubeArchivist and updates the local "Source" values for existing items. Your staged overrides will remain intact.',
+                header: '📋 Upstream Metadata Changes',
+                chanLabel: 'Updated Channels:',
+                vidLabel: 'Updated Videos:',
+                btnLabel: 'CONFIRM REFRESH'
             }
         };
 
@@ -169,6 +179,7 @@
             document.getElementById('resultsHeader').innerText = t.header;
             document.getElementById('chanSectionLabel').innerText = t.chanLabel;
             document.getElementById('vidSectionLabel').innerText = t.vidLabel;
+            confirmBtn.innerText = t.btnLabel;
             
             modal.classList.remove('hidden');
             runScan(true); // Default to Dry Run
@@ -190,7 +201,7 @@
             if (dryRun) resetModal();
             else {
                 confirmBtn.disabled = true;
-                confirmBtn.innerText = "DELETING...";
+                confirmBtn.innerText = "PROCESSING...";
                 confirmBtn.classList.add('opacity-50');
             }
 
@@ -217,7 +228,7 @@
             } finally {
                 if (!dryRun) {
                     confirmBtn.disabled = false;
-                    confirmBtn.innerText = "CONFIRM DELETIONS";
+                    confirmBtn.innerText = tasks[activeTask].btnLabel;
                     confirmBtn.classList.remove('opacity-50');
                 }
             }

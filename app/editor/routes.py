@@ -230,3 +230,47 @@ def run_folder_sync():
     dry_run = data.get('dry_run', True)
     report = sync_channel_folders(dry_run=dry_run)
     return jsonify({"status": "success", "report": report})
+
+@editor_bp.route('/api/refresh_metadata', methods=['POST'])
+def refresh_metadata():
+    data = request.json or {}
+    dry_run = data.get('dry_run', True)
+    report = {"channels": [], "videos": []}
+    
+    # 1. Refresh Channels
+    raw_channels = get_ta_paginated("api/channel")
+    for c in raw_channels:
+        chan = Channel.query.get(c['channel_id'])
+        if chan:
+            changed = (chan.name != c['channel_name'] or 
+                       chan.description != c.get('channel_description', ''))
+            if changed:
+                report["channels"].append(f"{chan.name} (Updated title/desc)")
+                if not dry_run:
+                    chan.name = c['channel_name']
+                    chan.description = c.get('channel_description', '')
+
+    # 2. Refresh Videos for eligible channels
+    eligible = Channel.query.filter_by(is_eligible=True).all()
+    for chan in eligible:
+        v_data = get_ta_paginated(f"api/video/?channel={chan.id}")
+        for v in v_data:
+            vid = Video.query.get(v.get('youtube_id'))
+            if vid:
+                pub = v.get('published', '')[:10]
+                changed = (vid.title != v.get('title') or 
+                           vid.description != v.get('description', '') or
+                           vid.published_at != pub)
+                if changed:
+                    report["videos"].append(f"{vid.title} (Updated metadata)")
+                    if not dry_run:
+                        vid.title = v.get('title')
+                        vid.description = v.get('description', '')
+                        vid.published_at = pub
+                        vid.season = pub[:4]
+                        vid.episode = pub[5:7] + pub[8:10]
+    
+    if not dry_run:
+        db.session.commit()
+    
+    return jsonify({"status": "success", "report": report})
