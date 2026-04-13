@@ -24,31 +24,87 @@ AI Disclaimer: Gemini inked 95% of this code, with architectural decisions and e
 - **Bidirectional Sync:** TubeArchivist is the "Source" of truth, download a new video there, sync and export in NFOmenter, and it will show up in the appropriate folder. Same goes for deletions, delete a video or even an entire channel in TA, and on sync and export it will be removed from the "Destination" folder.
 
 ## **Roadmap**
-- **Short Term:**
-  - **Readme:** Detailed install instructions.
-- **Medium Term:**
-  - **Orphan Check:** Scan for orphaned files not found in the database, or otherwise missing their .nfo files.
-  - **Handle Channel/Video Name Changes:** Decide what to do about youtube videos which have their metadata change on the TA side.
-  - **Write Automated Dev Tests:** Design some common test cases, automate them through TA API control, track and report results of tests.
-  - **Search:** Filter list by various channel/video fields.
-- **Long Term:**
-  - **Multi-Channel Aggregator:** Implement the multi-channel show builder. The primary purpose of this project is a 1:1 conversion of YouTube channels to TV shows, the aggregator is similar in fuction but is instead an N:1 conversion: Videos from multiple YouTube channels can be combined into a singular TV show. This must be separated off into a separate UI as, with the constraints of the mirrored dual pane editor, I couldn't come up with a good way to fit wholly new content into only one side.
-    - **UI:** Similarly dual paned editor, but not mirrored, and having an extra column on the left.
-        From right to left:
-        - **Source Pane:** Exactly the same as the 1:1 Single-Channel Editor, simply lists all available channels and their videos.
-        - **Destination Pane:** Represents a single custom aggregated TV show. Not mirrored, begins completely empty, and "episodes" are added from the source pane, picked from available channels and videos. Episodes are able to be edited in a similar manner to the regular 1:1 editor.
-        - **Show List:** A new, third column on the far left. Contains the list of desired custom aggregated shows, and a means to add new ones. When a show is selected from the list, the editor pane now reflects that show's currently selected YouTube videos.
-  - **LLM Integration:** Integrate with a local LLM to optionally generate episode summaries based on video transcripts.
-  - **Database Rebuild:** With a fresh install, given both an existing source and destination, rebuild database modifications by diffing the two. Essentially allow stored files to function as a database backup.
-  - **Properly Document API**
+- **Multi-Channel Aggregator:** Implement the multi-channel show builder. The primary purpose of this project is a 1:1 conversion of YouTube channels to TV shows, the aggregator is similar in fuction but is instead an N:1 conversion: Videos from multiple YouTube channels can be combined into a singular TV show. This must be separated off into a separate UI as, with the constraints of the mirrored dual pane editor, I couldn't come up with a good way to fit wholly new content into only one side.
+  - **UI:** Similarly dual paned editor, but not mirrored, and having an extra column on the left.
+      From right to left:
+      - **Source Pane:** Exactly the same as the 1:1 Single-Channel Editor, simply lists all available channels and their videos.
+      - **Destination Pane:** Represents a single custom aggregated TV show. Not mirrored, begins completely empty, and "episodes" are added from the source pane, picked from available channels and videos. Episodes are able to be edited in a similar manner to the regular 1:1 editor.
+      - **Show List:** A new, third column on the far left. Contains the list of desired custom aggregated shows, and a means to add new ones. When a show is selected from the list, the editor pane now reflects that show's currently selected YouTube videos.
+- **LLM Integration:** Integrate with a local LLM to optionally generate episode plot summaries based on video transcripts.
+- **Database Rebuild:** With a fresh install, given both an existing source and destination, rebuild database modifications by diffing the two. Essentially allow stored files to function as a database backup.
+- **Properly Document API**
+- **Search:** Filter list by various channel/video fields.
 
 ## **Install**
 
-Better instructions coming soon, but I've probably put at least enough documentation in [compose.yml](compose.yml) comments for the technically inclined to figure it out
+NFOmenter is deployed via Docker Compose. Because the application uses **Hardlinks** to save space, proper volume mapping is the most important part of the setup.
+
+### **The Golden Rule of Hardlinks**
+For NFOmenter to duplicate and rename your files without using any extra disk space, the **Source** (TubeArchivist files) and the **Destination** (Your new TV Show folders) **MUST** appear to the container as being on the same physical drive. With how Docker bind mounts work, this means they both are **REQUIRED** to be accessible from a **single** volume path.
+
+**Do not** mount them as two separate volumes (e.g., `- /mnt/User/Docker/tubearchivist/youtube:/source` and `- /mnt/User/Media/Videos/YouTube:/destination`). Instead, mount a shared parent folder:
+*   **Correct:** `- /mnt/User:/files` (it may be easier to mirror the external folder path internally, in this example, `/mnt/User:/mnt/User`, because then the internal paths will also be mirrored as well)
+*   **Internal Paths:** You then set your environment variables to point *inside* that mount (e.g., `SOURCE_DIR=/files/Docker/tubearchivist/youtube`).
+
+### **1. Prepare your environment**
+Create a directory for NFOmenter and a data folder to persist your database:
+```bash
+mkdir ta-nfomenter && cd ta-nfomenter
+mkdir data
+```
+
+### **2. Create `compose.yml`**
+Copy the following into a `compose.yml` file, stored in the created `ta-nfomenter` folder, adjusting the paths and TubeArchivist credentials to match your setup:
+
+```yaml
+version: '3.8'
+services:
+  ta-nfomenter:
+    image: ghcr.io/trafficman/ta-nfomenter:latest
+    container_name: ta-nfomenter
+    ports:
+      - 2960:2960
+    volumes:
+      # MOUNT THE SHARED PARENT FOLDER HERE
+      - /path/to/your/shared/folder:/path/to/your/shared/folder
+      # Persist the database, default location will use/create a "data" folder in the folder that contains this compose.yml file
+      - ./data:/ta-nfomenter-dev/data
+    environment:
+      - TA_URL=http://your.TA.URL
+      - TA_TOKEN=your_tubearchivist_api_token_here
+      
+      # Internal paths relative to the container
+      - DEST_DIR=/internal/path/to/DESTINATION
+      - SOURCE_DIR=/internal/path/to/SOURCE
+      - CACHE_VID=/internal/path/to/video/image/cache
+      - CACHE_CH=/internal/path/to/channel/image/cache
+    restart: unless-stopped
+```
+
+### **3. Configuration Breakdown**
+| Variable | Description |
+| :--- | :--- |
+| `TA_URL` | The full URL to your TubeArchivist instance. Use the IP address (e.g `http://its.local.IP.here:9000`) if you have connection issues. |
+| `TA_TOKEN` | Your TA API Token (found in TA Settings > Application > Integrations > API Token). |
+| `DEST_DIR` | Where NFOmenter will build your "TV Show" library. |
+| `SOURCE_DIR` | The path to TA's `/youtube` folder. |
+| `CACHE_VID` | The path to TA's video thumbnail cache (usually `/cache/videos`). |
+| `CACHE_CH` | The path to TA's channel image cache (usually `/cache/channels`). |
+
+### **4. Launch**
+```bash
+docker-compose up -d
+```
+Once the container is running, access the WebUI at `http://<your-ip>:2960`.
 
 ## **Usage**
 
-**TL;DR**: Load WebUI, toggle on desired channels, press "Sync TA", expand synced channel video lists, click on items (channel or video) and modify as needed (clicking "Stage Changes" for **EACH** individual item), once done press "Run Export", point media servers at Destination folder, enjoy your new "TV Shows"
+**TL;DR**: 
+1. Load WebUI and toggle on desired channels.
+2. Press **Sync TA** to fetch video lists.
+3. Click on items to modify metadata (Press **Stage Changes** for each item!).
+4. Press **Run Export** to create the folders and NFOs.
+5. Point your media server at the **Destination** folder.
 
 ### Step 0:
 Visit the WebUI in a browser (if hosted locally, should be located at something like "http://localhost:2960"), on page load, NFOmenter will query the TubeArchivist API and populate the right Source pane with all available channels.
@@ -81,6 +137,7 @@ Once you've completed picking and/or modifying the channels and videos you want 
 ### Maintenance Menu:
 - **Deletion Sync**: Queries TubeArchivist looking for videos or channels that have been deleted since the last sync. If any are found, they will be shown in the UI and you will be asked for confirmation before their hardlinks are deleted from the Destination folder. Relegated to a manual maintence task because it's very I/O intensive, and to ensure a human is in the loop before any files are deleted.
 - **Folder Name Sync**: Manually updates Destination show folder names based on current database info (Channel name, current known "premier" year). At time of writing I'm pretty sure this currently runs on each export, but for optimization reasons this may not remain the case (honestly it was a bit of a lazy bugfix), so a manual trigger is included regardless.
+- **Refresh Source Metadata:** Manually updates NFOmenter's Source metadata by pulling updated metadata directly from TA. 
 
 ## **Internal Structure**
 
