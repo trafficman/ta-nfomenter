@@ -11,6 +11,12 @@ env:
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
 
+# This prevents redundant builds when pushing a branch and a tag simultaneously.
+# If two jobs trigger for the same commit (SHA), the second one will cancel the first.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.sha }}
+  cancel-in-progress: true
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
