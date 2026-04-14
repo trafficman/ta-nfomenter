@@ -2,20 +2,7 @@
 {% block title %}Single-Channel Editor{% endblock %}
 
 {% block extra_style %}
-    #resizer { height: 4px; cursor: ns-resize; background: #374151; transition: background 0.2s; z-index: 60; }
-    #resizer:hover { background: #3b82f6; }
-    .panel-column { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
-    .scroll-content { flex: 1; overflow-y: auto; padding: 1rem; }
     .plot-textarea { min-height: 150px; flex-grow: 1; line-height: 1.5; }
-    .filter-ineligible-active .ineligible-channel { display: none; }
-
-    /* Dynamic Zebra Striping for Channel Groups (Mutually Exclusive) */
-    
-    /* 1. Default: Stripe even groups when filter is OFF */
-    body:not(.filter-ineligible-active) .channel-group:nth-child(even of .channel-group) { background-color: rgba(255, 255, 255, 0.02); }
-
-    /* 2. Filter Active: Stripe even VISIBLE groups when filter is ON */
-    body.filter-ineligible-active .channel-group:nth-child(even of .channel-group:not(.ineligible-channel)) { background-color: rgba(255, 255, 255, 0.02); }
 {% endblock %}
 
 {% block header_actions %}
@@ -76,7 +63,7 @@
             <h3 class="p-2 text-[9px] font-bold text-blue-400 uppercase border-b border-gray-800 bg-gray-900 sticky top-0">NFO Editor</h3>
             <div id="editor-pane" class="scroll-content mono-text"></div>
             <div id="editor-save-container" class="p-3 bg-gray-800 border-t border-gray-700 hidden">
-                <button onclick="saveMetadataFromActive()" class="bg-green-700 hover:bg-green-600 w-full py-2 text-white font-bold rounded">💾 STAGE CHANGES</button>
+                <button onclick="handleSave()" class="bg-green-700 hover:bg-green-600 w-full py-2 text-white font-bold rounded">💾 STAGE CHANGES</button>
             </div>
         </div>
         <div class="panel-column bg-gray-800/40">
@@ -89,157 +76,60 @@
 
 {% block extra_js %}
 <script>
-    // --- RESTORED SYNC SCROLL ---
+    // --- SYNC SCROLL ---
     const lp = document.getElementById('left-pane');
     const rp = document.getElementById('right-pane');
 
     lp.addEventListener('scroll', () => { rp.scrollTop = lp.scrollTop; });
     rp.addEventListener('scroll', () => { lp.scrollTop = rp.scrollTop; });
 
-    // --- Resize Logic ---
-    const footer = document.getElementById('footer-pane');
-    const resizer = document.getElementById('resizer');
-    let isResizing = false;
+    // --- Init Shared Logic ---
+    initResizer('resizer', 'footer-pane');
+
     let activeId = null;
 
-    resizer.addEventListener('mousedown', () => { isResizing = true; document.body.style.cursor = 'ns-resize'; });
-    document.addEventListener('mouseup', () => { isResizing = false; document.body.style.cursor = 'default'; });
-    document.addEventListener('mousemove', (e) => {
-        if (!isResizing) return;
-        const newHeight = window.innerHeight - e.clientY;
-        if (newHeight > 100 && newHeight < window.innerHeight * 0.85) footer.style.height = `${newHeight}px`;
-    });
-
-    // --- Functional Logic ---
-    function toggleTree(id) {
-        ['left', 'right'].forEach(side => {
-            const tree = document.getElementById(`tree-${side}-${id}`);
-            const tri = document.getElementById(`tri-${side}-${id}`);
-            if(tree) tree.classList.toggle('hidden');
-            if(tri) tri.classList.toggle('open');
-        });
-    }
-
     async function handleItemClick(el) {
+        if (!el.dataset.id) return;
         activeId = el.dataset.id;
         const isEligible = !document.getElementById(`left-item-${activeId}`).classList.contains('is-dimmed');
         document.querySelectorAll('.item-row').forEach(r => r.classList.remove('selected-item'));
         document.getElementById(`left-item-${activeId}`).classList.add('selected-item');
         document.getElementById(`right-item-${activeId}`).classList.add('selected-item');
             
-        const r = await fetch(`/api/get_metadata/${activeId}`);
-        renderPanes(await r.json(), isEligible);
+        const data = await fetchMetadata(activeId);
+        if (data) {
+            renderMetadataFields(
+                data, 
+                isEligible, 
+                document.getElementById('master-pane'), 
+                document.getElementById('editor-pane'), 
+                document.getElementById('editor-save-container')
+            );
+        }
     }
 
-    function renderPanes(data, isEligible) {
-        const meta = data.effective || {};
-        const source = data.source || {};
-        const propertyOrder = ['title', 'showtitle', 'season', 'episode', 'aired', 'premiered', 'year', 'studio', 'uniqueid', 'plot'];
-        
-        const masterPane = document.getElementById('master-pane');
-        const editorPane = document.getElementById('editor-pane');
-        
-        // Clear existing content
-        masterPane.innerHTML = '';
-        editorPane.innerHTML = '';
-
-        if (!isEligible) {
-            editorPane.innerHTML = `<div class="h-full flex items-center justify-center text-gray-500 italic">Locked.</div>`;
-            // We still want to show the master metadata even if the editor is locked
-        }
-
-        const editorWrapper = document.createElement('div');
-        editorWrapper.className = 'flex flex-col h-full';
-
-        propertyOrder.forEach(tag => {
-            if (!(tag in meta)) return;
-
-            const val = meta[tag] !== null ? String(meta[tag]) : '';
-            const sVal = source[tag] !== null ? String(source[tag]) : '';
-            const isPlot = tag === 'plot';
-            const isReadOnly = (tag === 'uniqueid' || tag === 'showtitle'); 
-
-            // --- Build Master Pane Item ---
-            const mItem = document.createElement('div');
-            mItem.className = 'mb-2';
-            mItem.innerHTML = `<span class="label-text">&lt;${tag}&gt;</span>`;
-            const mValDiv = document.createElement('div');
-            mValDiv.className = 'pl-2 border-l-2 border-gray-700 color-gray-300';
-            mValDiv.textContent = sVal; // Safe text assignment
-            mItem.appendChild(mValDiv);
-            masterPane.appendChild(mItem);
-
-            // --- Build Editor Pane Item ---
-            if (isEligible) {
-                const eItem = document.createElement('div');
-                eItem.className = `mb-2 ${isPlot ? 'flex-1 flex flex-col' : ''}`;
-                eItem.innerHTML = `<span class="label-text ${isReadOnly ? '' : 'text-blue-400'}">&lt;${tag}&gt;</span>`;
-                
-                const input = document.createElement(isPlot ? 'textarea' : 'input');
-                input.id = `edit-${tag}`;
-                input.className = `input-base ${isPlot ? 'plot-textarea' : ''}`;
-                if (!isPlot) input.type = 'text';
-                if (isReadOnly) input.disabled = true;
-                input.value = val; // Safe value assignment (fixes quote issues)
-                
-                eItem.appendChild(input);
-                editorWrapper.appendChild(eItem);
-            }
-        });
-
-        if (isEligible) {
-            const spacer = document.createElement('div');
-            spacer.className = 'h-6 w-full flex-none';
-            editorWrapper.appendChild(spacer);
-            editorPane.appendChild(editorWrapper);
-        }
-
-        // Final spacer for master pane
-        const mSpacer = document.createElement('div');
-        mSpacer.className = 'h-6 w-full flex-none';
-        masterPane.appendChild(mSpacer);
-
-        document.getElementById('editor-save-container').classList.toggle('hidden', !isEligible);
-    }
-
-    function saveMetadataFromActive() { if (activeId) saveMetadata(activeId); }
-
-    async function saveMetadata(id) {
-        const fields = {};
-        ['title', 'showtitle', 'season', 'episode', 'aired', 'premiered', 'year', 'studio', 'plot'].forEach(tag => {
-            const el = document.getElementById(`edit-${tag}`);
-            if (el && !el.disabled) fields[tag] = el.value;
-        });
-
-        const r = await fetch('/api/save_override', { 
-            method: 'POST', 
-            headers: {'Content-Type': 'application/json'}, 
-            body: JSON.stringify({id, fields}) 
-        });
-
+    async function handleSave() {
+        if (!activeId) return;
+        const r = await apiSaveMetadata(activeId);
         if (r.ok) {
-            document.getElementById('status-msg').innerText = "✅ Staged!";
+            updateStatus("✅ Staged!");
             // Update local tree label immediately if title changed
             const titleInput = document.getElementById('edit-title');
             if (titleInput) {
-                const label = document.querySelector(`#left-item-${id} .truncate`);
+                const label = document.querySelector(`#left-item-${activeId} .truncate`);
                 if (label) label.textContent = titleInput.value;
             }
-            setTimeout(() => document.getElementById('status-msg').innerText = "", 3000);
         }
     }
 
     async function toggleChannel(id, state) {
-        await fetch('/api/toggle_channel', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, state}) });
-        window.location.reload();
+        const r = await apiToggleChannel(id, state);
+        if (r.ok) window.location.reload();
     }
 
 	async function toggleVideo(id, state) {
-		await fetch('/api/toggle_video', { 
-			method: 'POST', 
-			headers: {'Content-Type': 'application/json'}, 
-			body: JSON.stringify({id, state}) 
-		});
+		const r = await apiToggleVideo(id, state);
+        if (!r.ok) return;
 			
 		// Toggle dimming on BOTH sides
 		document.getElementById(`left-item-${id}`).classList.toggle('is-dimmed', !state);
@@ -249,21 +139,5 @@
 			handleItemClick(document.getElementById(`left-item-${id}`));
 		}
 	}
-
-    async function syncAll() {
-        document.getElementById('status-msg').innerText = "Syncing...";
-        const r = await fetch('/api/sync_all', { method: 'POST' });
-        if (r.ok) window.location.reload();
-    }
-
-    async function runExport() {
-        document.getElementById('status-msg').innerText = "🚀 Exporting...";
-        try {
-            const r = await fetch('/api/export', { method: 'POST' });
-            if (r.ok) document.getElementById('status-msg').innerText = "✅ Export Finished!";
-        } catch (e) {
-            document.getElementById('status-msg').innerText = "❌ Export Failed.";
-        }
-    }
 </script>
 {% endblock %}

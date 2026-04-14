@@ -1,0 +1,41 @@
+/* Shared Scrollbar styling */
+.sync-scroll::-webkit-scrollbar { width: 4px; }
+.sync-scroll::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+
+/* Shared Zebra striping & Row hover */
+.item-row:nth-child(even) { background-color: rgba(255, 255, 255, 0.02); }
+.item-row { border-bottom: 1px solid rgba(55, 65, 81, 0.4); transition: background 0.2s; }
+.item-row:hover { background-color: rgba(59, 130, 246, 0.1) !important; }
+
+.selected-item { background-color: rgba(59, 130, 246, 0.2) !important; border-left: 4px solid #3b82f6; }
+.is-dimmed > *:not(input) { opacity: 0.3; filter: grayscale(100%); }
+
+.tri { display: inline-block; transition: transform 0.2s; font-size: 0.7rem; cursor: pointer; padding: 0 4px; }
+.tri.open { transform: rotate(90deg); }
+
+/* Typography & Shared Inputs */
+.mono-text { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 13px; }
+.label-text { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #6b7280; margin-bottom: 2px; display: block; }
+.input-base { width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 4px; padding: 4px 8px; color: white; outline: none; }
+.input-base:focus { border-color: #3b82f6; }
+
+/* Structural Panels & Resizer */
+#resizer { height: 4px; cursor: ns-resize; background: #374151; transition: background 0.2s; z-index: 60; }
+#resizer:hover { background: #3b82f6; }
+.panel-column { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
+.scroll-content { flex: 1; overflow-y: auto; padding: 1rem; }
+
+/* Visibility & Filter Toggles */
+.filter-ineligible-active .ineligible-channel { display: none; }
+
+/* Dynamic Zebra Striping for Channel Groups (Mutually Exclusive) */
+
+/* 1. Default: Stripe even groups when filter is OFF */
+body:not(.filter-ineligible-active) .channel-group:nth-child(even of .channel-group) { 
+    background-color: rgba(255, 255, 255, 0.02); 
+}
+
+/* 2. Filter Active: Stripe even VISIBLE groups when filter is ON */
+body.filter-ineligible-active .channel-group:nth-child(even of .channel-group:not(.ineligible-channel)) { 
+    background-color: rgba(255, 255, 255, 0.02); 
+}
