@@ -18,12 +18,12 @@
         <div class="channel-group {% if not channel.is_eligible %}ineligible-channel{% endif %}">
             <div id="left-item-{{ channel.id }}" class="item-row p-2 cursor-pointer flex items-center {% if not channel.is_eligible %}is-dimmed{% endif %}" data-id="{{ channel.id }}" onclick="handleItemClick(this)">
                 <span class="tri mr-2 text-gray-600" id="tri-left-{{ channel.id }}" onclick="toggleTree('{{ channel.id }}'); event.stopPropagation();">▶</span>
-                <span class="text-blue-400 mr-2 text-xs">📁</span> <span class="truncate text-sm">{{ title_overrides.get(channel.id, channel.name) }}</span>
+                <span class="text-blue-400 mr-2 text-xs">📁</span> <span class="truncate text-sm"><span>{{ title_overrides.get(channel.id, channel.name) }}</span></span>
             </div>
             <div id="tree-left-{{ channel.id }}" class="hidden bg-black/30">
                 {% for video in video_map.get(channel.id, []) %}
                 <div id="left-item-{{ video.id }}" class="item-row pl-10 p-1.5 text-sm cursor-pointer {% if not video.is_enabled %}is-dimmed{% endif %}" data-id="{{ video.id }}" onclick="handleItemClick(this)">
-                    <span class="text-gray-600 mr-2">🎬</span> <span class="truncate">{{ title_overrides.get(video.id, video.title) }}</span>
+                    <span class="text-gray-600 mr-2">🎬</span> <span class="truncate"><span>{{ title_overrides.get(video.id, video.title) }}</span></span>
                 </div>
                 {% endfor %}
             </div>
@@ -36,17 +36,17 @@
         {% for channel in channels %}
         <div class="channel-group {% if not channel.is_eligible %}ineligible-channel{% endif %}">
             <div id="right-item-{{ channel.id }}" class="item-row p-2 pr-6 flex justify-between items-center cursor-pointer {% if not channel.is_eligible %}is-dimmed{% endif %}" data-id="{{ channel.id }}" onclick="handleItemClick(this)">
-                <div class="flex items-center">
+                <div class="flex items-center min-w-0">
                     <span class="tri mr-2 text-gray-500" id="tri-right-{{ channel.id }}" onclick="toggleTree('{{ channel.id }}'); event.stopPropagation();">▶</span>
-                    <span class="text-sm">📁 {{ channel.name }}</span>
+                    <span class="truncate text-sm"><span>📁 {{ channel.name }}</span></span>
                 </div>
-                <input type="checkbox" class="w-4 h-4" onchange="toggleChannel('{{ channel.id }}', this.checked); event.stopPropagation();" {% if channel.is_eligible %}checked{% endif %}>
+                <input type="checkbox" class="w-4 h-4 flex-shrink-0 ml-2" onchange="toggleChannel('{{ channel.id }}', this.checked); event.stopPropagation();" {% if channel.is_eligible %}checked{% endif %}>
             </div>
             <div id="tree-right-{{ channel.id }}" class="hidden bg-black/10">
                 {% for video in video_map.get(channel.id, []) %}
                 <div id="right-item-{{ video.id }}" class="item-row pl-10 p-1.5 pr-6 text-sm flex justify-between items-center cursor-pointer {% if not video.is_enabled %}is-dimmed{% endif %}" data-id="{{ video.id }}" onclick="handleItemClick(this)">
-                    <span>🎬 {{ video.title }}</span>
-                    <input type="checkbox" class="w-3.5 h-3.5" onchange="toggleVideo('{{ video.id }}', this.checked); event.stopPropagation();" {% if video.is_enabled %}checked{% endif %}>
+                    <span class="truncate"><span>🎬 {{ video.title }}</span></span>
+                    <input type="checkbox" class="w-3.5 h-3.5 flex-shrink-0 ml-2" onchange="toggleVideo('{{ video.id }}', this.checked); event.stopPropagation();" {% if video.is_enabled %}checked{% endif %}>
                 </div>
                 {% endfor %}
             </div>
@@ -116,8 +116,11 @@
             // Update local tree label immediately if title changed
             const titleInput = document.getElementById('edit-title');
             if (titleInput) {
-                const label = document.querySelector(`#left-item-${activeId} .truncate`);
-                if (label) label.textContent = titleInput.value;
+                const label = document.querySelector(`#left-item-${activeId} .truncate span`);
+                if (label) {
+                    label.textContent = titleInput.value;
+                    updateMarqueeState(label);
+                }
             }
         }
     }

@@ -2,12 +2,40 @@
 .sync-scroll::-webkit-scrollbar { width: 4px; }
 .sync-scroll::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
 
+/* Force single-line behavior in tree lists to prevent vertical misalignment */
+.item-row { display: flex; align-items: center; min-width: 0; white-space: nowrap; overflow: hidden; }
+
 /* Shared Zebra striping & Row hover */
 .item-row:nth-child(even) { background-color: rgba(255, 255, 255, 0.02); }
 .item-row { border-bottom: 1px solid rgba(55, 65, 81, 0.4); transition: background 0.2s; }
 .item-row:hover { background-color: rgba(59, 130, 246, 0.1) !important; }
 
 .selected-item { background-color: rgba(59, 130, 246, 0.2) !important; border-left: 4px solid #3b82f6; }
+
+/* Truncation & Dynamic Marquee */
+.item-row .truncate {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.item-row:hover .truncate span.can-marquee,
+.selected-item .truncate span.can-marquee {
+    display: inline-block;
+    will-change: transform;
+    backface-visibility: hidden;
+    /* The duration is dynamic: 1s per 20px of overflow, minimum 3s, maximum 15s */
+    animation: marquee-scroll var(--marquee-duration, 8s) ease-in-out infinite alternate;
+}
+
+@keyframes marquee-scroll {
+    /* Pause at the start and end for readability */
+    0%, 15% { transform: translateX(0); }
+    85%, 100% { transform: translateX(calc(-1px * var(--scroll-dist, 0))); }
+}
+
 .is-dimmed > *:not(input) { opacity: 0.3; filter: grayscale(100%); }
 
 .tri { display: inline-block; transition: transform 0.2s; font-size: 0.7rem; cursor: pointer; padding: 0 4px; }

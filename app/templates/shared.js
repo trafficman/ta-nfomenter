@@ -57,6 +57,32 @@ function initResizer(resizerId, footerId) {
     });
 }
 
+/**
+ * Calculates if text overflows and sets CSS variables for a smooth marquee.
+ */
+function updateMarqueeState(el) {
+    const container = el.closest('.truncate');
+    if (!container) return;
+
+    // Temporarily set display to measure full content width
+    const originalDisplay = el.style.display;
+    el.style.display = 'inline-block';
+    const scrollWidth = el.offsetWidth;
+    el.style.display = originalDisplay;
+
+    const containerWidth = container.offsetWidth;
+    const overflow = scrollWidth - containerWidth;
+
+    if (overflow > 0) {
+        el.style.setProperty('--scroll-dist', overflow);
+        // Dynamic speed: roughly 30px per second
+        el.style.setProperty('--marquee-duration', Math.min(Math.max(overflow / 30, 3), 15) + 's');
+        el.classList.add('can-marquee');
+    } else {
+        el.classList.remove('can-marquee');
+    }
+}
+
 // --- METADATA CORE ---
 
 /**
@@ -179,6 +205,14 @@ async function apiToggleChannel(id, state) {
         body: JSON.stringify({id, state}) 
     });
 }
+
+// --- GLOBAL EVENT LISTENERS ---
+document.addEventListener('mouseenter', (e) => {
+    if (e.target.classList && e.target.classList.contains('item-row')) {
+        const span = e.target.querySelector('.truncate span');
+        if (span) updateMarqueeState(span);
+    }
+}, true);
 
 async function apiToggleVideo(id, state) {
     return await fetch('/api/toggle_video', { 
