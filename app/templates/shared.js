@@ -5,14 +5,37 @@ const EDITABLE_FIELDS = ['title', 'season', 'episode', 'aired', 'premiered', 'ye
 // --- UI UTILITIES ---
 
 /**
+ * Tracks the active status animation interval
+ */
+let statusInterval = null;
+
+/**
  * Updates the header status message with an optional timeout
  */
 function updateStatus(msg, timeout = 3000) {
     const el = document.getElementById('status-msg');
     if (!el) return;
+
+    clearInterval(statusInterval);
     el.innerText = msg;
+
+    if (msg.endsWith('...')) {
+        const baseText = msg.slice(0, -3);
+        let count = 3;
+        statusInterval = setInterval(() => {
+            count = (count > 0) ? count - 1 : 3;
+            el.innerText = baseText + ".".repeat(count);
+        }, 600);
+    }
+
     if (timeout) {
-        setTimeout(() => { if (el.innerText === msg) el.innerText = ""; }, timeout);
+        setTimeout(() => { 
+            const base = msg.endsWith('...') ? msg.slice(0, -3) : msg;
+            if (el.innerText.startsWith(base)) {
+                el.innerText = ""; 
+                clearInterval(statusInterval);
+            }
+        }, timeout);
     }
 }
 
