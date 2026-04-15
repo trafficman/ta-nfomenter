@@ -161,7 +161,8 @@ def export_nfo():
         for v in videos:
             v_meta = get_effective_metadata(v.id, 'video', v)
             v_title = sanitize(v_meta['title'])
-            base_fn = f"{show_root.name} - {v_meta['season']}x{v_meta['episode']} - {v_title} [{v.id}]"
+            show_title = sanitize(c_meta['title'])
+            base_fn = f"{show_title} - {v_meta['season']}x{v_meta['episode']} - {v_title} [{v.id}]"
             
             season_dir = show_root / f"Season {v_meta['season']}"
             target_nfo = season_dir / f"{base_fn}.nfo"
