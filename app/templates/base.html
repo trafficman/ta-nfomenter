@@ -114,12 +114,18 @@
             <h3 class="text-xl font-bold text-gray-100 border-b border-gray-700 pb-3 mb-4">Settings</h3>
             
             <div id="settingsContainer" class="space-y-4">
-                <!-- Placeholder Setting -->
-                <label class="flex items-center justify-between group cursor-pointer">
-                    <span class="text-sm text-gray-300 font-bold uppercase tracking-wide group-hover:text-white transition-colors">Placeholder Setting</span>
-                    <input type="checkbox" id="setting-placeholder" class="w-5 h-5 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500">
-                </label>
-                <p class="text-[10px] text-gray-500 uppercase font-bold">This is a placeholder setting to verify the system works.</p>
+                <!-- Channel Naming -->
+                <div>
+                    <label class="label-text text-blue-400">Channel Folder Scheme</label>
+                    <input type="text" id="setting-channel-scheme" class="input-base text-sm" placeholder="{title} ({year})">
+                    <p class="text-[9px] text-gray-500 mt-1 uppercase font-bold">Vars: {title}, {year}, {id}</p>
+                </div>
+                <!-- Video Naming -->
+                <div>
+                    <label class="label-text text-blue-400">Video File Scheme</label>
+                    <input type="text" id="setting-video-scheme" class="input-base text-sm" placeholder="{showtitle} - {season}x{episode} - {title} [{id}]">
+                    <p class="text-[9px] text-gray-500 mt-1 uppercase font-bold">Vars: {title}, {showtitle}, {season}, {episode}, {id}</p>
+                </div>
             </div>
 
             <div class="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-700">
@@ -296,7 +302,8 @@
                 const settings = await r.json();
                 
                 // Map JSON values to UI
-                document.getElementById('setting-placeholder').checked = settings.placeholder_setting;
+                document.getElementById('setting-channel-scheme').value = settings.channel_naming_scheme || "";
+                document.getElementById('setting-video-scheme').value = settings.video_naming_scheme || "";
                 
                 document.getElementById('settingsModal').classList.remove('hidden');
             } catch (e) {
@@ -310,7 +317,8 @@
 
         async function saveAppSettings() {
             const settings = {
-                placeholder_setting: document.getElementById('setting-placeholder').checked
+                channel_naming_scheme: document.getElementById('setting-channel-scheme').value,
+                video_naming_scheme: document.getElementById('setting-video-scheme').value
             };
 
             const r = await fetch('/api/settings', {

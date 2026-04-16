@@ -18,7 +18,8 @@ CACHE_CH = Path(os.getenv("CACHE_CH"))
 DATA_DIR = Path(__file__).parent.parent / "data"
 SETTINGS_PATH = DATA_DIR / "settings.json"
 DEFAULT_SETTINGS = {
-    "placeholder_setting": True
+    "channel_naming_scheme": "{title} ({year})",
+    "video_naming_scheme": "{showtitle} - {season}x{episode} - {title} [{id}]"
 }
 
 def get_settings():
@@ -140,10 +141,18 @@ def get_folders_by_id():
 
 def get_channel_dest_path(chan):
     """Determines the intended destination folder path for a channel, handling collisions."""
+    settings = get_settings()
+    scheme = settings.get("channel_naming_scheme", "{title} ({year})")
     meta = get_effective_metadata(chan.id, 'channel', chan)
-    standard_name = f"{sanitize(meta['title'])} ({chan.oldest_year})"
+    
+    # Resolve dynamic scheme
+    vars = {'title': meta['title'], 'year': meta['year'], 'id': chan.id}
+    standard_name = scheme
+    for k, v in vars.items():
+        standard_name = standard_name.replace(f"{{{k}}}", sanitize(v))
+    
+    standard_name = " ".join(standard_name.split()).strip()
     clean_path = DEST_DIR / standard_name
-
     if not clean_path.exists():
         return clean_path
 
@@ -151,8 +160,11 @@ def get_channel_dest_path(chan):
     if read_nfo_id(clean_path / "tvshow.nfo") == chan.id:
         return clean_path
 
-    # Collision detected (someone else owns the clean path) or already moved to suffixed
-    return DEST_DIR / f"{standard_name} [{chan.id}]"
+    # Collision detected - append ID for uniqueness if not already present in scheme
+    if f"[{chan.id}]" not in standard_name:
+        return DEST_DIR / f"{standard_name} [{chan.id}]"
+    
+    return clean_path
 
 def get_base_metadata(item_id, item_type, db_item):
     if item_type == 'channel':

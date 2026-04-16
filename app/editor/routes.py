@@ -6,7 +6,7 @@ from app.models import db, Channel, Video, MetadataOverride
 from app.utils import (
     get_ta_paginated, get_effective_metadata, write_xml, 
     safe_cleanup_video, safe_delete_channel_folder, scan_for_deletions, sync_channel_folders, get_base_metadata,
-    nfo_needs_update, sanitize, normalize_text, read_nfo_id, DEST_DIR, SOURCE_DIR, CACHE_CH, CACHE_VID, get_channel_dest_path
+    nfo_needs_update, sanitize, normalize_text, read_nfo_id, DEST_DIR, SOURCE_DIR, CACHE_CH, CACHE_VID, get_channel_dest_path, get_settings
 )
 
 editor_bp = Blueprint('editor', __name__, template_folder='templates')
@@ -133,6 +133,7 @@ def save_override():
 @editor_bp.route('/api/export', methods=['POST'])
 def export_nfo():
     # Ensure folder names on disk match current DB metadata (handles name/year changes)
+    settings = get_settings()
     sync_channel_folders(dry_run=False)
 
     all_channels = Channel.query.all()
@@ -159,11 +160,18 @@ def export_nfo():
 
         videos = Video.query.filter_by(channel_id=chan.id).all()
         for v in videos:
+            v_scheme = settings.get("video_naming_scheme", "{showtitle} - {season}x{episode} - {title} [{id}]")
             v_meta = get_effective_metadata(v.id, 'video', v)
-            v_title = sanitize(v_meta['title'])
-            show_title = sanitize(c_meta['title'])
-            base_fn = f"{show_title} - {v_meta['season']}x{v_meta['episode']} - {v_title} [{v.id}]"
             
+            v_vars = {
+                'title': v_meta['title'], 'showtitle': v_meta['showtitle'],
+                'season': v_meta['season'], 'episode': v_meta['episode'], 'id': v.id
+            }
+            base_fn = v_scheme
+            for k, val in v_vars.items():
+                base_fn = base_fn.replace(f"{{{k}}}", sanitize(val))
+            base_fn = " ".join(base_fn.split()).strip()
+
             season_dir = show_root / f"Season {v_meta['season']}"
             target_nfo = season_dir / f"{base_fn}.nfo"
 
