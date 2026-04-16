@@ -1,4 +1,4 @@
-import os, requests, glob, shutil
+import os, requests, glob, shutil, json
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from .models import db, MetadataOverride, Channel, Video
@@ -13,6 +13,28 @@ DEST_DIR = Path(os.getenv("DEST_DIR"))
 SOURCE_DIR = Path(os.getenv("SOURCE_DIR"))
 CACHE_VID = Path(os.getenv("CACHE_VID"))
 CACHE_CH = Path(os.getenv("CACHE_CH"))
+
+# --- SETTINGS MANAGEMENT ---
+DATA_DIR = Path(__file__).parent.parent / "data"
+SETTINGS_PATH = DATA_DIR / "settings.json"
+DEFAULT_SETTINGS = {
+    "placeholder_setting": True
+}
+
+def get_settings():
+    if not SETTINGS_PATH.exists():
+        save_settings(DEFAULT_SETTINGS)
+        return DEFAULT_SETTINGS
+    try:
+        with open(SETTINGS_PATH, 'r') as f:
+            return {**DEFAULT_SETTINGS, **json.load(f)}
+    except:
+        return DEFAULT_SETTINGS
+
+def save_settings(settings):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with open(SETTINGS_PATH, 'w') as f:
+        json.dump(settings, f, indent=4)
 
 # --- HELPERS ---
 def sanitize(name):
