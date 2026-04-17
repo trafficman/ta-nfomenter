@@ -124,6 +124,7 @@
                 <div>
                     <label class="label-text text-blue-400">Video File Scheme</label>
                     <input type="text" id="setting-video-scheme" class="input-base text-sm" placeholder="{showtitle} - {season}x{episode} - {title} [{id}]">
+                    <p id="video-scheme-error" class="hidden text-red-500 text-[9px] mt-1 font-bold uppercase">Scheme must include {title} or {id} for uniqueness.</p>
                     <p class="text-[9px] text-gray-500 mt-1 uppercase font-bold">Vars: {title}, {showtitle}, {season}, {episode}, {id}</p>
                 </div>
             </div>
@@ -316,6 +317,16 @@
         }
 
         async function saveAppSettings() {
+            const videoScheme = document.getElementById('setting-video-scheme').value;
+            
+            // Basic Validation: Ensure at least Title or ID is present
+            if (videoScheme && !videoScheme.includes('{title}') && !videoScheme.includes('{id}')) {
+                document.getElementById('video-scheme-error').classList.remove('hidden');
+                return;
+            }
+            
+            document.getElementById('video-scheme-error').classList.add('hidden');
+
             const settings = {
                 channel_naming_scheme: document.getElementById('setting-channel-scheme').value,
                 video_naming_scheme: document.getElementById('setting-video-scheme').value

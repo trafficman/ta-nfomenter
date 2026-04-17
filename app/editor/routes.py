@@ -173,6 +173,16 @@ def export_nfo():
             base_fn = " ".join(base_fn.split()).strip()
 
             season_dir = show_root / f"Season {v_meta['season']}"
+
+            # Collision handling for video filenames
+            potential_nfo = season_dir / f"{base_fn}.nfo"
+            if potential_nfo.exists():
+                existing_uid = read_nfo_id(potential_nfo)
+                if existing_uid and existing_uid != v.id:
+                    # Name is taken by a different video; append ID if not already there
+                    if f"[{v.id}]" not in base_fn:
+                        base_fn = f"{base_fn} [{v.id}]"
+            
             target_nfo = season_dir / f"{base_fn}.nfo"
 
             if not v.is_enabled:
