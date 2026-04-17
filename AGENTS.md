@@ -56,7 +56,7 @@ Crucial: All Python logic uses **Container-Internal** paths.
 - [x] **Secrets File:** Environments variables via `.env`.
 - [x] **Docker Config:** Split `compose.yml` (Prod) and `compose-dev.yml` (Dev).
 - [x] **Port Migration:** Standardized on `2960`.
-- [x] **Shared Routes:** Global endpoints moved to `app/routes.py`.
+- [x] **Shared Routes:** Global endpoints moved to `app/shared_routes.py`.
 - [x] **GUI Settings:** Persistent JSON-based configuration menu.
 - [x] **Filter Toggles:** Hide ineligible channels in Single-Channel Editor.
 

@@ -152,7 +152,7 @@ Once you've completed picking and/or modifying the channels and videos you want 
 - `app/utils.py`: Shared logic (TA API client, NFO XML generation, Path configurations, Cleanup).
 - `app/templates/base.html`: Shared shell (Header, Nav, CSS).
 - `app/editor/`: Single-Channel Editor specific files.
-- `app/editor/routes.py`: API routes (currently all of them, may need to be split out into shared routes).
+- `app/editor/editor_routes.py`: API routes (currently all of them, may need to be split out into shared routes).
 - `app/editor/templates/editor.html`: HTML and JS logic for Single-Channel Editor.
 - `app/aggregator/`: Planned Multi-Channel Aggregator feature extension.
 - `run.py`: Starts the app.

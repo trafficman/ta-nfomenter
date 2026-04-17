@@ -19,9 +19,9 @@ def create_app():
 
     with app.app_context():
         # Import and register Blueprints
-        from .routes import main_bp
-        from .editor.routes import editor_bp
-        # from .aggregator.routes import aggregator_bp # Reserved for later
+        from .shared_routes import main_bp
+        from .editor.editor_routes import editor_bp
+        # from .aggregator.aggregator_routes import aggregator_bp # Reserved for later
         
         app.register_blueprint(main_bp)
         app.register_blueprint(editor_bp)
