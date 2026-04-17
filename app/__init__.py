@@ -21,11 +21,11 @@ def create_app():
         # Import and register Blueprints
         from .shared_routes import main_bp
         from .editor.editor_routes import editor_bp
-        # from .aggregator.aggregator_routes import aggregator_bp # Reserved for later
+        from .aggregator.aggregator_routes import aggregator_bp
         
         app.register_blueprint(main_bp)
         app.register_blueprint(editor_bp)
-        # app.register_blueprint(aggregator_bp, url_prefix='/aggregator')
+        app.register_blueprint(aggregator_bp, url_prefix='/aggregator')
 
         # Perform startup path validation checks
         from .utils import SOURCE_DIR, DEST_DIR, is_ta_youtube_structure, is_hardlink_compatible

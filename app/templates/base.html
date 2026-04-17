@@ -14,8 +14,8 @@
         <div class="flex items-center space-x-6">
             <h1 class="text-xl font-bold text-red-500">NFOmenter</h1>
             <nav class="flex space-x-4 text-xs font-bold uppercase tracking-wider items-center">
-                <a href="/" class="text-blue-400 hover:text-blue-300 pb-1">Single-Channel Editor</a>
-                <!-- <a href="/aggregator" class="text-gray-500 hover:text-gray-300">Multi-Channel Aggregator</a> -->
+                <a href="/" class="{% if request.endpoint == 'editor.index' %}text-blue-400{% else %}text-gray-500 hover:text-gray-300{% endif %} pb-1">Single-Channel Editor</a>
+                <a href="/aggregator/" class="{% if request.endpoint and request.endpoint.startswith('aggregator.') %}text-blue-400{% else %}text-gray-500 hover:text-gray-300{% endif %} pb-1">Multi-Channel Aggregator</a>
 
                 <!-- Maintenance Dropdown -->
                 <div class="relative group">
