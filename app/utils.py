@@ -1,7 +1,7 @@
 import os, requests, glob, shutil, json
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from .models import db, MetadataOverride, Channel, Video
+from .models import db, MetadataOverride, Channel, Video, AggregatedShow
 
 # --- CONFIGURATION PATHS ---
 TA_URL = os.getenv("TA_URL", "").strip().rstrip('/')
@@ -36,6 +36,22 @@ def save_settings(settings):
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     with open(SETTINGS_PATH, 'w') as f:
         json.dump(settings, f, indent=4)
+
+def get_next_aggregated_id():
+    """
+    Calculates the next available AggregatedShow ID in the format AS_N.
+    Parses existing IDs to find the highest current integer.
+    """
+    shows = AggregatedShow.query.all()
+    nums = []
+    for s in shows:
+        if s.id and s.id.startswith("AS_"):
+            try:
+                # Extract the number after the underscore
+                nums.append(int(s.id.split('_')[1]))
+            except (ValueError, IndexError):
+                continue
+    return f"AS_{max(nums) + 1 if nums else 1}"
 
 # --- HELPERS ---
 def sanitize(name):

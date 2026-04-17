@@ -30,6 +30,9 @@ Crucial: All Python logic uses **Container-Internal** paths.
 
 ## 4. Logical Constraints
 - **Source of Truth:** TubeArchivist API is authoritative for existence. Filesystem `tvshow.nfo` `<uniqueid>` is authoritative for directory identity.
+- **Compartmentalization:** The Single-Channel Editor (1:1) and Multi-Channel Aggregator (N:1) are logically separate. 
+    - 1:1 overrides use the `MetadataOverride` table.
+    - N:1 metadata is stored directly in the `AggregatedEpisode` model.
 - **Naming Schemes:** User-configurable via `{vars}`. Folder naming defaults to `{title} ({year})`. File naming defaults to `{showtitle} - {season}x{episode} - {title} [{id}]`.
 - **Validation:** Video naming schemes *must* contain `{title}` or `{id}` to pass frontend validation.
 - **Hardlink Rule:** Source and Destination **must** reside on the same physical filesystem/mount for `os.link` to function.
@@ -38,12 +41,14 @@ Crucial: All Python logic uses **Container-Internal** paths.
 ## 5. UI/UX Logic
 - **Single-Channel Editor:** Dual-pane. Left (Modified/DB) and Right (Source/TA). Synchronized scrolling via JS.
 - **Global Settings:** Modal-based configuration for naming schemes and system-wide toggles.
-- **Multi-Channel Aggregator:** (Planned) 3-column layout. Far-left (Aggregated Shows List), Center (Show Builder), Right (Global TA Source).
+- **Multi-Channel Aggregator:** 3-column layout. Far-left (Aggregated Shows List), Center (Show Builder/Custom Metadata), Right (Global TA Source).
 
 ## 6. Glossary (Project Specific)
 - **Eligible:** Boolean. If `True`, the channel is processed for export. If `False`, it is purged from Destination.
 - **Enabled:** Boolean. Individual video control.
 - **Override:** A specific metadata field value stored in DB that breaks inheritance from TA.
+- **Aggregated Show:** A custom TV show created by the user containing videos from multiple channels.
+- **Aggregated Episode:** A specific video instance within an Aggregated Show, possessing its own unique Season, Episode, Title, and Plot data.
 - **Maintenance Task:** Manual sync operations (Deletion Sync, Folder Name Sync, Orphan Check).
 
 ## 7. Roadmap

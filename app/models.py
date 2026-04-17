@@ -27,3 +27,21 @@ class MetadataOverride(db.Model):
     target_id = db.Column(db.String(50), index=True) 
     field_name = db.Column(db.String(50))            
     new_value = db.Column(db.Text)
+
+class AggregatedShow(db.Model):
+    """Represents a custom user-created TV Show."""
+    id = db.Column(db.String(50), primary_key=True)
+    title = db.Column(db.String(255))
+    description = db.Column(db.Text)
+    studio = db.Column(db.String(100), default="YouTube")
+    is_active = db.Column(db.Boolean, default=True)
+
+class AggregatedEpisode(db.Model):
+    """Links a Video to an AggregatedShow with dedicated aggregator metadata."""
+    id = db.Column(db.Integer, primary_key=True)
+    show_id = db.Column(db.String(50), db.ForeignKey('aggregated_show.id'))
+    video_id = db.Column(db.String(50), db.ForeignKey('video.id'))
+    season = db.Column(db.String(4))
+    episode = db.Column(db.String(4))
+    title = db.Column(db.String(255))
+    plot = db.Column(db.Text)
