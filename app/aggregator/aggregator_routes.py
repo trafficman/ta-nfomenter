@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template
 from sqlalchemy import func
-from app.models import db, Channel, Video, MetadataOverride
+from app.models import db, Channel, Video, AggregatedShow
 from app.utils import get_ta_paginated
 
 aggregator_bp = Blueprint('aggregator', __name__, template_folder='templates')
@@ -20,14 +20,12 @@ def index():
             ))
     db.session.commit()
 
-    # Batch fetch title overrides to show custom names in the Aggregated Preview (left pane)
-    title_overrides = {o.target_id: o.new_value for o in MetadataOverride.query.filter_by(field_name='title').all()}
-
     channels = Channel.query.order_by(func.lower(Channel.name)).all()
     all_videos = Video.query.order_by(Video.published_at.desc()).all()
+    aggregated_shows = AggregatedShow.query.order_by(AggregatedShow.name).all()
     
     video_map = {}
     for v in all_videos:
         video_map.setdefault(v.channel_id, []).append(v)
 
-    return render_template('aggregator.html', channels=channels, video_map=video_map, title_overrides=title_overrides)
+    return render_template('aggregator.html', channels=channels, video_map=video_map, aggregated_shows=aggregated_shows)

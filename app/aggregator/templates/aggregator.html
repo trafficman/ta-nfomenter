@@ -8,7 +8,28 @@
 {% block content %}
 <main class="flex-1 flex overflow-hidden">
     <section id="left-pane" class="flex-1 border-r border-gray-700 overflow-y-auto bg-gray-900">
-        <h2 class="p-2 text-[10px] font-bold text-gray-500 uppercase sticky top-0 bg-gray-900 border-b border-gray-800 z-30">Aggregated Preview</h2>
+        <div class="sticky top-0 bg-gray-900 border-b border-gray-800 z-30 flex items-center p-1">
+            <div class="relative group">
+                <button class="p-1 text-[10px] font-bold text-blue-400 uppercase flex items-center focus:outline-none">
+                    Aggregated Show: <span id="current-show-name" class="ml-1 text-gray-300">None Selected</span> <span class="ml-1 text-[8px] text-gray-500">▼</span>
+                </button>
+                <div class="absolute left-0 mt-0 w-64 bg-gray-800 border border-gray-700 rounded shadow-xl hidden group-hover:block z-50">
+                    <div id="show-list-container" class="max-h-64 overflow-y-auto">
+                        {% for show in aggregated_shows %}
+                        <a href="#" onclick="selectShow('{{ show.id }}', '{{ show.name }}'); return false;" class="block px-4 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition-colors border-b border-gray-700/50">{{ show.name }}</a>
+                        {% endfor %}
+                    </div>
+                    <a href="#" onclick="openCreateShowModal(); return false;" class="block px-4 py-3 text-xs font-bold text-green-500 hover:bg-gray-700 hover:text-green-400 transition-colors">
+                        + Create New Aggregated Show
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div id="no-show-selected" class="flex flex-col items-center justify-center h-[calc(100%-40px)] text-gray-600 p-8 text-center">
+            <div class="text-4xl mb-4">📺</div>
+            <p class="text-sm font-bold uppercase tracking-widest">No Aggregated Show Selected</p>
+            <p class="text-xs mt-2 italic">Pick a show from the dropdown above or create a new one to begin building your custom TV show.</p>
+        </div>
     </section>
 
     <section id="right-pane" class="flex-1 overflow-y-auto bg-gray-800/10">
@@ -52,6 +73,19 @@
         </div>
     </div>
 </footer>
+
+<!-- Create Show Modal -->
+<div id="createShowModal" class="hidden fixed inset-0 bg-black/80 z-[100] flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-gray-800 border border-gray-700 rounded-lg shadow-2xl w-full max-w-md p-6">
+        <h3 class="text-xl font-bold text-gray-100 border-b border-gray-700 pb-3 mb-4 uppercase tracking-wider">New Aggregated Show</h3>
+        <div class="min-h-[100px] flex items-center justify-center border border-dashed border-gray-700 rounded">
+            <p class="text-gray-500 text-xs italic">Placeholder: Create Show logic coming soon...</p>
+        </div>
+        <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-700">
+            <button onclick="document.getElementById('createShowModal').classList.add('hidden')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded text-xs font-bold transition-colors">CLOSE</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -106,5 +140,14 @@
 			handleItemClick(document.getElementById(`right-item-${id}`));
 		}
 	}
+
+    function selectShow(id, name) {
+        document.getElementById('current-show-name').textContent = name;
+        document.getElementById('no-show-selected').classList.add('hidden');
+    }
+
+    function openCreateShowModal() {
+        document.getElementById('createShowModal').classList.remove('hidden');
+    }
 </script>
 {% endblock %}
