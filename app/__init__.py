@@ -12,6 +12,7 @@ def create_app():
     data_dir = os.path.join(os.path.dirname(basedir), 'data')
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)
+    db_path = os.path.join(data_dir, 'nfomenter.db')
 
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(data_dir, 'nfomenter.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -68,17 +69,28 @@ def create_app():
 
         if os.path.exists(migrations_dir):
             try:
-                print("[*] Checking for database migrations...")
-                # Check if the database is already initialized but has no migration table
-                # This is the case for your existing stable users.
                 from sqlalchemy import inspect
                 inspector = inspect(db.engine)
-                if "channel" in inspector.get_table_names() and "alembic_version" not in inspector.get_table_names():
+                tables = inspector.get_table_names()
+
+                if not os.path.exists(db_path) or not tables:
+                    # Case 1: Brand new installation
+                    print("[*] No database detected. Initializing from models...")
+                    db.create_all()
+                    print("[*] Stamping database with latest migration version...")
+                    stamp(directory=migrations_dir)
+                elif "channel" in tables and "alembic_version" not in tables:
+                    # Case 2: Existing user from before the migration system was added
                     print("[*] Existing legacy database detected. Stamping as baseline...")
                     # We stamp it with the baseline ID so upgrade() only runs the NEW migrations
                     stamp(directory=migrations_dir, revision='8c5b79466278')
-                
-                upgrade(directory=migrations_dir)
+                    print("[*] Applying updates...")
+                    upgrade(directory=migrations_dir)
+                else:
+                    # Case 3: Standard update for an already migrated database
+                    print("[*] Checking for database migrations...")
+                    upgrade(directory=migrations_dir)
+
                 print("[*] Database is up to date.")
             except Exception as e:
                 print(f"[!] Migration Error: {e}")
