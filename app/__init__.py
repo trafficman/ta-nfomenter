@@ -2,6 +2,7 @@ import os
 import sys
 from flask import Flask
 from .models import db
+from flask_migrate import Migrate, upgrade, stamp
 
 def create_app():
     app = Flask(__name__)
@@ -16,6 +17,8 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     db.init_app(app)
+    # We store the migrate object to potentially use it for programmatic access
+    migrate = Migrate(app, db)
 
     with app.app_context():
         # Import and register Blueprints
@@ -57,6 +60,29 @@ def create_app():
             print("[!] ERROR: Both Source and Destination directories detected as TubeArchivist /youtube folders, choose a different directory for Destination")
             sys.exit(1)
 
-        db.create_all()
+        # Programmatically apply migrations on startup.
+        # This ensures the user's database is always in sync with the current models.
+        # If no migrations folder exists (fresh dev environment), it falls back to create_all.
+        project_root = os.path.dirname(basedir)
+        migrations_dir = os.path.join(project_root, 'migrations')
+
+        if os.path.exists(migrations_dir):
+            try:
+                print("[*] Checking for database migrations...")
+                # Check if the database is already initialized but has no migration table
+                # This is the case for your existing stable users.
+                from sqlalchemy import inspect
+                inspector = inspect(db.engine)
+                if "channel" in inspector.get_table_names() and "alembic_version" not in inspector.get_table_names():
+                    print("[*] Existing legacy database detected. Stamping as baseline...")
+                    # We stamp it with the baseline ID so upgrade() only runs the NEW migrations
+                    stamp(directory=migrations_dir, revision='8c5b79466278')
+                
+                upgrade(directory=migrations_dir)
+                print("[*] Database is up to date.")
+            except Exception as e:
+                print(f"[!] Migration Error: {e}")
+        else:
+            db.create_all()
 
     return app
