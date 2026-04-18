@@ -31,17 +31,27 @@ class MetadataOverride(db.Model):
 class AggregatedShow(db.Model):
     """Represents a custom user-created TV Show."""
     id = db.Column(db.String(50), primary_key=True)
-    title = db.Column(db.String(255))
+    name = db.Column(db.String(255))
     description = db.Column(db.Text)
+    premiered = db.Column(db.String(10))
+    oldest_year = db.Column(db.String(4), default="2005")
     studio = db.Column(db.String(100), default="YouTube")
     is_active = db.Column(db.Boolean, default=True)
 
-class AggregatedEpisode(db.Model):
+class AggregatedChannel(db.Model):
+    """Join table for AS and YouTube Channels"""
+    id = db.Column(db.Integer, primary_key=True)
+    show_id = db.Column(db.String(50), db.ForeignKey('aggregated_show.id'))
+    channel_id = db.Column(db.String(50), db.ForeignKey('channel.id'))
+
+class AggregatedVideo(db.Model):
     """Links a Video to an AggregatedShow with dedicated aggregator metadata."""
     id = db.Column(db.Integer, primary_key=True)
     show_id = db.Column(db.String(50), db.ForeignKey('aggregated_show.id'))
     video_id = db.Column(db.String(50), db.ForeignKey('video.id'))
-    season = db.Column(db.String(4))
-    episode = db.Column(db.String(4))
-    title = db.Column(db.String(255))
-    plot = db.Column(db.Text)
+    # Overrides: Nullable so they can fall back to the base Video metadata
+    title = db.Column(db.String(255), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    published_at = db.Column(db.String(10), nullable=True) 
+    season = db.Column(db.String(4), nullable=True)
+    episode = db.Column(db.String(4), nullable=True)
