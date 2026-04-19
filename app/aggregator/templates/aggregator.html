@@ -35,19 +35,19 @@
     <section id="right-pane" class="flex-1 overflow-y-auto bg-gray-800/10">
         <h2 class="p-2 text-[10px] font-bold text-gray-500 uppercase sticky top-0 bg-gray-800 border-b border-gray-700 z-30">Source Layer</h2>
         {% for channel in channels %}
-        <div class="channel-group {% if not channel.is_eligible %}ineligible-channel{% endif %}">
-            <div id="right-item-{{ channel.id }}" class="item-row p-2 pr-6 flex justify-between items-center cursor-pointer {% if not channel.is_eligible %}is-dimmed{% endif %}" data-id="{{ channel.id }}" onclick="handleItemClick(this)">
+        <div class="channel-group">
+            <div id="right-item-{{ channel.id }}" class="item-row p-2 pr-6 flex justify-between items-center cursor-pointer is-dimmed" data-id="{{ channel.id }}" onclick="handleItemClick(this)">
                 <div class="flex items-center min-w-0">
                     <span class="tri mr-2 text-gray-500" id="tri-right-{{ channel.id }}" onclick="toggleTree('{{ channel.id }}'); event.stopPropagation();">▶</span>
                     <span class="truncate text-sm"><span>📁 {{ channel.name }}</span></span>
                 </div>
-                <input type="checkbox" class="w-4 h-4 flex-shrink-0 ml-2" onchange="toggleChannel('{{ channel.id }}', this.checked); event.stopPropagation();" {% if channel.is_eligible %}checked{% endif %}>
+                <input type="checkbox" class="w-4 h-4 flex-shrink-0 ml-2 source-toggle opacity-20 cursor-not-allowed" onchange="toggleChannel('{{ channel.id }}', this.checked); event.stopPropagation();" disabled>
             </div>
             <div id="tree-right-{{ channel.id }}" class="hidden bg-black/10">
                 {% for video in video_map.get(channel.id, []) %}
-                <div id="right-item-{{ video.id }}" class="item-row pl-10 p-1.5 pr-6 text-sm flex justify-between items-center cursor-pointer {% if not video.is_enabled %}is-dimmed{% endif %}" data-id="{{ video.id }}" onclick="handleItemClick(this)">
+                <div id="right-item-{{ video.id }}" class="item-row pl-10 p-1.5 pr-6 text-sm flex justify-between items-center cursor-pointer is-dimmed" data-id="{{ video.id }}" onclick="handleItemClick(this)">
                     <span class="truncate"><span>🎬 {{ video.title }}</span></span>
-                    <input type="checkbox" class="w-3.5 h-3.5 flex-shrink-0 ml-2" onchange="toggleVideo('{{ video.id }}', this.checked); event.stopPropagation();" {% if video.is_enabled %}checked{% endif %}>
+                    <input type="checkbox" class="w-3.5 h-3.5 flex-shrink-0 ml-2 source-toggle opacity-20 cursor-not-allowed" onchange="toggleVideo('{{ video.id }}', this.checked); event.stopPropagation();" disabled>
                 </div>
                 {% endfor %}
             </div>
@@ -62,7 +62,12 @@
     <div class="grid grid-cols-2 h-full">
         <div class="panel-column border-r border-gray-700 bg-gray-900">
             <h3 class="p-2 text-[9px] font-bold text-blue-400 uppercase border-b border-gray-800 bg-gray-900 sticky top-0">Aggregator Editor</h3>
-            <div id="editor-pane" class="scroll-content mono-text"></div>
+            <div id="editor-pane" class="scroll-content mono-text h-full">
+                <div class="h-full flex flex-col items-center justify-center text-gray-600 uppercase font-bold text-[10px] tracking-widest">
+                    <span>Locked</span>
+                    <span class="mt-2 font-normal normal-case italic text-center px-4 text-[9px]">Select an Aggregated Show to enable editing</span>
+                </div>
+            </div>
             <div id="editor-save-container" class="p-3 bg-gray-800 border-t border-gray-700 hidden">
                 <button onclick="handleSave()" class="bg-green-700 hover:bg-green-600 w-full py-2 text-white font-bold rounded">💾 STAGE CHANGES</button>
             </div>
@@ -94,56 +99,97 @@
     initResizer('resizer', 'footer-pane');
 
     let activeId = null;
+    let currentShowId = null;
 
     async function handleItemClick(el) {
         if (!el.dataset.id) return;
         activeId = el.dataset.id;
-        const sourceItem = document.getElementById(`right-item-${activeId}`);
-        const isEnabled = sourceItem && !sourceItem.classList.contains('is-dimmed');
 
         document.querySelectorAll('.item-row').forEach(r => r.classList.remove('selected-item'));
         document.getElementById(`right-item-${activeId}`).classList.add('selected-item');
             
         const data = await fetchMetadata(activeId);
         if (data) {
-            renderMetadataFields(
-                data, 
-                isEnabled, 
-                document.getElementById('master-pane'), 
-                document.getElementById('editor-pane'), 
-                document.getElementById('editor-save-container')
-            );
+            // Populate Master Pane (Read Only)
+            const masterPane = document.getElementById('master-pane');
+            masterPane.innerHTML = '';
+            
+            const source = data.source || {};
+            METADATA_FIELDS.forEach(tag => {
+                if (!(tag in source)) return;
+                const val = source[tag] !== null ? String(source[tag]) : '';
+                const div = document.createElement('div');
+                div.className = 'mb-2';
+                div.innerHTML = `<span class="label-text text-gray-500">&lt;${tag}&gt;</span><div class="pl-2 border-l-2 border-gray-700 text-gray-400 text-xs break-words"></div>`;
+                div.querySelector('div').textContent = val;
+                masterPane.appendChild(div);
+            });
+
+            // Handle Aggregator Editor state
+            const editorPane = document.getElementById('editor-pane');
+            const saveContainer = document.getElementById('editor-save-container');
+
+            if (!currentShowId) {
+                editorPane.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-gray-600 uppercase font-bold text-[10px] tracking-widest">
+                        <span>Locked</span>
+                        <span class="mt-2 font-normal normal-case italic text-center px-4 text-[9px]">Select an Aggregated Show to enable editing</span>
+                    </div>
+                `;
+                saveContainer.classList.add('hidden');
+            } else {
+                // Check if target is channel (starts with UC)
+                const isChannel = activeId.startsWith('UC');
+                if (isChannel) {
+                    editorPane.innerHTML = `
+                        <div class="h-full flex flex-col items-center justify-center text-gray-500 uppercase font-bold text-[10px] tracking-widest">
+                            <span>Restricted</span>
+                            <span class="mt-2 font-normal normal-case italic text-center px-4 text-[9px]">Channel metadata is managed in the Single-Channel Editor</span>
+                        </div>
+                    `;
+                    saveContainer.classList.add('hidden');
+                } else {
+                    editorPane.innerHTML = `
+                        <div class="h-full flex flex-col items-center justify-center text-gray-600 uppercase font-bold text-[10px] tracking-widest">
+                            <span>Locked</span>
+                            <span class="mt-2 font-normal normal-case italic text-center px-4 text-[9px]">Aggregated Video overrides coming soon...</span>
+                        </div>
+                    `;
+                    saveContainer.classList.add('hidden');
+                }
+            }
         }
     }
 
     async function handleSave() {
-        if (!activeId) return;
-        const r = await apiSaveMetadata(activeId);
-        if (r.ok) {
-            updateStatus("✅ Staged!");
-            // UI updates for the Aggregated Preview will be implemented once the build logic is added
-        }
+        console.log("Aggregator handleSave: Not yet implemented for custom shows.");
+        updateStatus("⚠️ Not Implemented");
     }
 
     async function toggleChannel(id, state) {
-        const r = await apiToggleChannel(id, state);
-        if (r.ok) window.location.reload();
+        if (!currentShowId) return;
+        console.log(`Aggregator toggleChannel: Adding ${id} to ${currentShowId}`);
     }
 
 	async function toggleVideo(id, state) {
-		const r = await apiToggleVideo(id, state);
-        if (!r.ok) return;
-			
-		document.getElementById(`right-item-${id}`).classList.toggle('is-dimmed', !state);
-			
-		if(document.getElementById(`right-item-${id}`).classList.contains('selected-item')) {
-			handleItemClick(document.getElementById(`right-item-${id}`));
-		}
+        if (!currentShowId) return;
+        console.log(`Aggregator toggleVideo: Adding ${id} to ${currentShowId}`);
 	}
 
     function selectShow(id, name) {
+        currentShowId = id;
         document.getElementById('current-show-name').textContent = name;
         document.getElementById('no-show-selected').classList.add('hidden');
+
+        // Enable and style checkboxes
+        document.querySelectorAll('.source-toggle').forEach(el => {
+            el.disabled = false;
+            el.classList.remove('opacity-20', 'cursor-not-allowed');
+            el.classList.add('cursor-pointer');
+        });
+
+        // Undim rows to show they are active for building the show
+        document.querySelectorAll('.item-row').forEach(el => el.classList.remove('is-dimmed'));
     }
 
     function openCreateShowModal() {
