@@ -99,3 +99,63 @@ def delete_show(show_id):
     db.session.delete(show)
     db.session.commit()
     return jsonify({"status": "success"})
+
+@aggregator_bp.route('/api/show_joins/<show_id>')
+def get_show_joins(show_id):
+    """Returns lists of joined channel and video IDs for a specific show."""
+    channels = [c.channel_id for c in AggregatedChannel.query.filter_by(show_id=show_id).all()]
+    
+    # For the left pane, we need full video details to organize by season
+    agg_videos = AggregatedVideo.query.filter_by(show_id=show_id).all()
+    video_details = []
+    for av in agg_videos:
+        v = Video.query.get(av.video_id)
+        if not v: continue
+        video_details.append({
+            "id": v.id,
+            "title": av.title or v.title,
+            "season": av.season or v.season or "0",
+            "episode": av.episode or v.episode or "0"
+        })
+    
+    # Sort by season then episode
+    video_details.sort(key=lambda x: (
+        int(x['season']) if str(x['season']).isdigit() else 0, 
+        int(x['episode']) if str(x['episode']).isdigit() else 0
+    ))
+
+    return jsonify({
+        "channels": channels, 
+        "videos": [v['id'] for v in video_details],
+        "left_pane": video_details
+    })
+
+@aggregator_bp.route('/api/toggle_channel', methods=['POST'])
+def toggle_channel():
+    data = request.json
+    sid, cid, state = data.get('show_id'), data.get('channel_id'), data.get('state')
+    if not sid or not cid: return jsonify({"status": "error", "message": "Missing IDs"}), 400
+
+    existing = AggregatedChannel.query.filter_by(show_id=sid, channel_id=cid).first()
+    if state and not existing:
+        db.session.add(AggregatedChannel(show_id=sid, channel_id=cid))
+    elif not state and existing:
+        db.session.delete(existing)
+    
+    db.session.commit()
+    return jsonify({"status": "success"})
+
+@aggregator_bp.route('/api/toggle_video', methods=['POST'])
+def toggle_video():
+    data = request.json
+    sid, vid, state = data.get('show_id'), data.get('video_id'), data.get('state')
+    if not sid or not vid: return jsonify({"status": "error", "message": "Missing IDs"}), 400
+
+    existing = AggregatedVideo.query.filter_by(show_id=sid, video_id=vid).first()
+    if state and not existing:
+        db.session.add(AggregatedVideo(show_id=sid, video_id=vid))
+    elif not state and existing:
+        db.session.delete(existing)
+        
+    db.session.commit()
+    return jsonify({"status": "success"})

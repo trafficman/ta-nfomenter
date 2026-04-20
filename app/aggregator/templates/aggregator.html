@@ -33,6 +33,7 @@
             <p class="text-sm font-bold uppercase tracking-widest">No Aggregated Show Selected</p>
             <p class="text-xs mt-2 italic">Pick a show from the dropdown above or create a new one to begin building your custom TV show.</p>
         </div>
+        <div id="aggregated-items" class="hidden"></div>
     </section>
 
     <section id="right-pane" class="flex-1 overflow-y-auto bg-gray-800/10">
@@ -162,8 +163,12 @@
         activeId = el.dataset.id;
 
         document.querySelectorAll('.item-row').forEach(r => r.classList.remove('selected-item'));
-        document.getElementById(`right-item-${activeId}`).classList.add('selected-item');
-            
+        const rightItem = document.getElementById(`right-item-${activeId}`);
+        if (rightItem) rightItem.classList.add('selected-item');
+        
+        const leftItem = document.getElementById(`left-item-${activeId}`);
+        if (leftItem) leftItem.classList.add('selected-item');
+
         const data = await fetchMetadata(activeId);
         if (data) {
             // Populate Master Pane (Read Only)
@@ -224,28 +229,116 @@
 
     async function toggleChannel(id, state) {
         if (!currentShowId) return;
-        console.log(`Aggregator toggleChannel: Adding ${id} to ${currentShowId}`);
+        try {
+            const r = await fetch('/aggregator/api/toggle_channel', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ show_id: currentShowId, channel_id: id, state: state })
+            });
+            if (r.ok) {
+                refreshShowPreview();
+            }
+        } catch (e) { console.error(e); }
     }
 
 	async function toggleVideo(id, state) {
         if (!currentShowId) return;
-        console.log(`Aggregator toggleVideo: Adding ${id} to ${currentShowId}`);
+        try {
+            const r = await fetch('/aggregator/api/toggle_video', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ show_id: currentShowId, video_id: id, state: state })
+            });
+            if (r.ok) {
+                refreshShowPreview();
+            }
+        } catch (e) { console.error(e); }
 	}
 
-    function selectShow(id, name) {
+    async function selectShow(id, name) {
         currentShowId = id;
         document.getElementById('current-show-name').textContent = name;
         document.getElementById('no-show-selected').classList.add('hidden');
 
-        // Enable and style checkboxes
-        document.querySelectorAll('.source-toggle').forEach(el => {
+        // Reset UI state in right pane: Disable first, then fetch
+        const allRows = document.querySelectorAll('#right-pane .item-row');
+        allRows.forEach(el => el.classList.add('is-dimmed'));
+
+        const allCheckboxes = document.querySelectorAll('.source-toggle');
+        allCheckboxes.forEach(el => {
+            el.checked = false;
             el.disabled = false;
             el.classList.remove('opacity-20', 'cursor-not-allowed');
             el.classList.add('cursor-pointer');
         });
 
-        // Undim rows to show they are active for building the show
-        document.querySelectorAll('.item-row').forEach(el => el.classList.remove('is-dimmed'));
+        await refreshShowPreview();
+    }
+
+    async function refreshShowPreview() {
+        if (!currentShowId) return;
+
+        // Fetch joins for this show
+        try {
+            const r = await fetch(`/aggregator/api/show_joins/${currentShowId}`);
+            const joins = await r.json();
+            
+            // Update Right Pane (Source) state
+            document.querySelectorAll('#right-pane .item-row').forEach(el => el.classList.add('is-dimmed'));
+            document.querySelectorAll('.source-toggle').forEach(el => el.checked = false);
+
+            [...joins.channels, ...joins.videos].forEach(targetId => {
+                const row = document.getElementById(`right-item-${targetId}`);
+                if (!row) return;
+                row.classList.remove('is-dimmed');
+                const cb = row.querySelector('.source-toggle');
+                if (cb) cb.checked = true;
+            });
+
+            // Build Left Pane (Aggregated Preview) grouped by Season
+            const leftPaneContainer = document.getElementById('aggregated-items');
+            leftPaneContainer.innerHTML = '';
+            leftPaneContainer.classList.remove('hidden');
+
+            const seasons = {};
+            joins.left_pane.forEach(v => {
+                if (!seasons[v.season]) seasons[v.season] = [];
+                seasons[v.season].push(v);
+            });
+
+            const sortedSeasons = Object.keys(seasons).sort((a,b) => parseInt(a) - parseInt(b));
+
+            sortedSeasons.forEach(s => {
+                const seasonDiv = document.createElement('div');
+                seasonDiv.className = 'season-group';
+                
+                seasonDiv.innerHTML = `
+                    <div class="item-row p-2 cursor-pointer flex items-center border-b border-gray-800/50" onclick="toggleTree('season-${s}')">
+                        <span class="tri mr-2 text-gray-600" id="tri-left-season-${s}">▶</span>
+                        <span class="text-blue-400 mr-2 text-xs">📁</span>
+                        <span class="truncate text-sm font-bold text-gray-300 uppercase tracking-tighter">Season ${s}</span>
+                    </div>
+                    <div id="tree-left-season-${s}" class="hidden bg-black/30"></div>
+                `;
+                
+                const episodesContainer = seasonDiv.querySelector(`#tree-left-season-${s}`);
+                seasons[s].forEach(ep => {
+                    const epDiv = document.createElement('div');
+                    epDiv.id = `left-item-${ep.id}`;
+                    epDiv.className = 'item-row pl-10 p-1.5 text-sm cursor-pointer flex items-center';
+                    if (ep.id === activeId) epDiv.classList.add('selected-item');
+                    epDiv.dataset.id = ep.id;
+                    epDiv.onclick = (e) => { handleItemClick(epDiv); e.stopPropagation(); };
+                    epDiv.innerHTML = `
+                        <span class="text-gray-600 mr-2 text-[10px]">🎬</span>
+                        <span class="truncate text-gray-300">S${ep.season}E${ep.episode} - ${ep.title}</span>
+                    `;
+                    episodesContainer.appendChild(epDiv);
+                });
+                
+                leftPaneContainer.appendChild(seasonDiv);
+            });
+        } catch (e) { console.error("Error fetching joins:", e); }
     }
 
     function openCreateShowModal() {
