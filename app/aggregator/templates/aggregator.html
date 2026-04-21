@@ -161,6 +161,7 @@
     async function handleItemClick(el) {
         if (!el.dataset.id) return;
         activeId = el.dataset.id;
+        const isChannel = activeId.startsWith('UC');
 
         document.querySelectorAll('.item-row').forEach(r => r.classList.remove('selected-item'));
         const rightItem = document.getElementById(`right-item-${activeId}`);
@@ -169,7 +170,14 @@
         const leftItem = document.getElementById(`left-item-${activeId}`);
         if (leftItem) leftItem.classList.add('selected-item');
 
-        const data = await fetchMetadata(activeId);
+        let data;
+        if (currentShowId && !isChannel) {
+            const r = await fetch(`/aggregator/api/video_metadata/${currentShowId}/${activeId}`);
+            data = await r.json();
+        } else {
+            data = await fetchMetadata(activeId);
+        }
+
         if (data) {
             // Populate Master Pane (Read Only)
             const masterPane = document.getElementById('master-pane');
@@ -199,8 +207,6 @@
                 `;
                 saveContainer.classList.add('hidden');
             } else {
-                // Check if target is channel (starts with UC)
-                const isChannel = activeId.startsWith('UC');
                 if (isChannel) {
                     editorPane.innerHTML = `
                         <div class="h-full flex flex-col items-center justify-center text-gray-500 uppercase font-bold text-[10px] tracking-widest">
@@ -209,22 +215,67 @@
                         </div>
                     `;
                     saveContainer.classList.add('hidden');
-                } else {
+                } else if (!data.modified) {
                     editorPane.innerHTML = `
                         <div class="h-full flex flex-col items-center justify-center text-gray-600 uppercase font-bold text-[10px] tracking-widest">
                             <span>Locked</span>
-                            <span class="mt-2 font-normal normal-case italic text-center px-4 text-[9px]">Aggregated Video overrides coming soon...</span>
+                            <span class="mt-2 font-normal normal-case italic text-center px-4 text-[9px]">Video must be enabled for this show to edit metadata</span>
                         </div>
                     `;
                     saveContainer.classList.add('hidden');
+                } else {
+                    editorPane.innerHTML = '';
+                    saveContainer.classList.remove('hidden');
+                    
+                    const editFields = [
+                        { tag: 'title', label: 'Title', type: 'text' },
+                        { tag: 'season', label: 'Season', type: 'text' },
+                        { tag: 'episode', label: 'Episode', type: 'text' },
+                        { tag: 'aired', label: 'Aired', type: 'text' },
+                        { tag: 'plot', label: 'Plot', type: 'textarea' }
+                    ];
+
+                    editFields.forEach(f => {
+                        const val = data.modified[f.tag] || '';
+                        const div = document.createElement('div');
+                        div.className = 'mb-4 px-3';
+                        div.innerHTML = `<label class="label-text text-blue-400">${f.label}</label>`;
+                        
+                        const input = f.type === 'textarea' ? document.createElement('textarea') : document.createElement('input');
+                        if (f.type === 'text') input.type = 'text';
+                        input.className = `input-base text-xs ${f.type === 'textarea' ? 'plot-textarea' : ''}`;
+                        input.id = `edit-${f.tag}`;
+                        input.value = val;
+                        div.appendChild(input);
+                        editorPane.appendChild(div);
+                    });
                 }
             }
         }
     }
 
     async function handleSave() {
-        console.log("Aggregator handleSave: Not yet implemented for custom shows.");
-        updateStatus("⚠️ Not Implemented");
+        if (!currentShowId || !activeId) return;
+        const metadata = {
+            title: document.getElementById('edit-title')?.value,
+            season: document.getElementById('edit-season')?.value,
+            episode: document.getElementById('edit-episode')?.value,
+            aired: document.getElementById('edit-aired')?.value,
+            plot: document.getElementById('edit-plot')?.value
+        };
+
+        try {
+            const r = await fetch('/aggregator/api/save_video_metadata', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ show_id: currentShowId, video_id: activeId, metadata })
+            });
+            const res = await r.json();
+            if (res.status === 'success') {
+                updateStatus("✅ Overrides Staged");
+                refreshShowPreview();
+            }
+        } catch (e) { updateStatus("❌ Save Error"); }
     }
 
     async function toggleChannel(id, state) {

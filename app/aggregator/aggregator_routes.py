@@ -159,3 +159,50 @@ def toggle_video():
         
     db.session.commit()
     return jsonify({"status": "success"})
+
+@aggregator_bp.route('/api/video_metadata/<show_id>/<video_id>')
+def get_aggregated_video_metadata(show_id, video_id):
+    """Returns source metadata and custom overrides for a video in an aggregated show."""
+    v = Video.query.get(video_id)
+    if not v: return jsonify({"status": "error"}), 404
+    
+    chan = Channel.query.get(v.channel_id)
+    av = AggregatedVideo.query.filter_by(show_id=show_id, video_id=video_id).first()
+    
+    source = {
+        'title': v.title, 'plot': v.description, 'aired': v.published_at,
+        'season': v.season, 'episode': v.episode, 'showtitle': chan.name if chan else "Unknown"
+    }
+    
+    modified = None
+    if av:
+        show = AggregatedShow.query.get(show_id)
+        modified = {
+            'title': av.title if av.title is not None else v.title,
+            'plot': av.description if av.description is not None else v.description,
+            'aired': av.published_at if av.published_at is not None else v.published_at,
+            'season': av.season if av.season is not None else v.season,
+            'episode': av.episode if av.episode is not None else v.episode,
+            'showtitle': show.name if show else "Aggregated Show"
+        }
+    
+    return jsonify({"source": source, "modified": modified})
+
+@aggregator_bp.route('/api/save_video_metadata', methods=['POST'])
+def save_aggregated_video_metadata():
+    data = request.json
+    sid, vid, meta = data.get('show_id'), data.get('video_id'), data.get('metadata', {})
+    
+    av = AggregatedVideo.query.filter_by(show_id=sid, video_id=vid).first()
+    if not av: return jsonify({"status": "error", "message": "Video not joined to show"}), 404
+    
+    v = Video.query.get(vid)
+    # Inheritance: Store as NULL if value matches base metadata
+    av.title = meta.get('title') if meta.get('title') != v.title else None
+    av.description = meta.get('plot') if meta.get('plot') != v.description else None
+    av.published_at = meta.get('aired') if meta.get('aired') != v.published_at else None
+    av.season = meta.get('season') if meta.get('season') != v.season else None
+    av.episode = meta.get('episode') if meta.get('episode') != v.episode else None
+    
+    db.session.commit()
+    return jsonify({"status": "success"})
