@@ -1,6 +1,6 @@
 // --- METADATA CONSTANTS ---
 const METADATA_FIELDS = ['title', 'showtitle', 'season', 'episode', 'aired', 'studio', 'uniqueid', 'plot', 'premiered', 'year'];
-const EDITABLE_FIELDS = ['title', 'season', 'episode', 'aired', 'premiered', 'year', 'plot'];
+const EDITABLE_FIELDS = ['title', 'season', 'episode', 'aired', 'premiered', 'year', 'studio', 'plot'];
 
 // --- UI UTILITIES ---
 
@@ -212,6 +212,7 @@ function renderMetadataFields(data, isEligible, masterPane, editorPane, saveCont
 
     // Render Editor Pane
     if (isEligible) {
+        const isChannel = ('premiered' in source);
         const fieldsToRender = (data.modified) 
             ? [
                 {tag:'title', label:'<TITLE>'},
@@ -227,9 +228,12 @@ function renderMetadataFields(data, isEligible, masterPane, editorPane, saveCont
 
         fieldsToRender.forEach(f => {
             if (f.tag in meta) {
+                let fieldEditable = true;
+                if (f.tag === 'studio' && !isChannel) fieldEditable = false;
+
                 renderMetadataField(editorPane, f.tag, meta[f.tag], { 
                     label: f.label, 
-                    isEditable: true,
+                    isEditable: fieldEditable,
                     showRevert: true
                 });
             }

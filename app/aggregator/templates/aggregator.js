@@ -53,11 +53,11 @@ async function handleItemClick(el) {
 async function handleSave() {
     if (!currentShowId || !activeId) return;
     const metadata = {
-        title: document.getElementById('edit-title')?.value,
-        season: document.getElementById('edit-season')?.value,
-        episode: document.getElementById('edit-episode')?.value,
-        aired: document.getElementById('edit-aired')?.value,
-        plot: document.getElementById('edit-plot')?.value
+        title: document.getElementById('edit-title')?.value ?? null,
+        season: document.getElementById('edit-season')?.value ?? null,
+        episode: document.getElementById('edit-episode')?.value ?? null,
+        aired: document.getElementById('edit-aired')?.value ?? null,
+        plot: document.getElementById('edit-plot')?.value ?? null
     };
 
     try {
