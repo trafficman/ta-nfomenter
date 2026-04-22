@@ -16,7 +16,7 @@
             </div>
             <div id="tree-left-{{ channel.id }}" class="hidden bg-black/30">
                 {% for video in video_map.get(channel.id, []) %}
-                <div id="left-item-{{ video.id }}" class="item-row pl-10 p-1.5 text-sm cursor-pointer {% if not video.is_enabled %}is-dimmed{% endif %}" data-id="{{ video.id }}" onclick="handleItemClick(this)">
+                <div id="left-item-{{ video.id }}" class="item-row pl-10 p-1.5 text-sm cursor-pointer {% if not video.is_enabled or not channel.is_eligible %}is-dimmed{% endif %}" data-id="{{ video.id }}" onclick="handleItemClick(this)">
                     <span class="text-gray-600 mr-2">🎬</span> <span class="truncate"><span>{{ title_overrides.get(video.id, video.title) }}</span></span>
                 </div>
                 {% endfor %}
@@ -38,9 +38,9 @@
             </div>
             <div id="tree-right-{{ channel.id }}" class="hidden bg-black/10">
                 {% for video in video_map.get(channel.id, []) %}
-                <div id="right-item-{{ video.id }}" class="item-row pl-10 p-1.5 pr-6 text-sm flex justify-between items-center cursor-pointer {% if not video.is_enabled %}is-dimmed{% endif %}" data-id="{{ video.id }}" onclick="handleItemClick(this)">
+                <div id="right-item-{{ video.id }}" class="item-row pl-10 p-1.5 pr-6 text-sm flex justify-between items-center cursor-pointer {% if not video.is_enabled or not channel.is_eligible %}is-dimmed{% endif %}" data-id="{{ video.id }}" onclick="handleItemClick(this)">
                     <span class="truncate"><span>🎬 {{ video.title }}</span></span>
-                    <input type="checkbox" class="w-3.5 h-3.5 flex-shrink-0 ml-2" onchange="toggleVideo('{{ video.id }}', this.checked); event.stopPropagation();" {% if video.is_enabled %}checked{% endif %}>
+                    <input type="checkbox" class="w-3.5 h-3.5 flex-shrink-0 ml-2" onchange="toggleVideo('{{ video.id }}', this.checked); event.stopPropagation();" {% if video.is_enabled and channel.is_eligible %}checked{% endif %} {% if not channel.is_eligible %}disabled{% endif %}>
                 </div>
                 {% endfor %}
             </div>

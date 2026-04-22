@@ -1,7 +1,7 @@
 import os, requests, glob, shutil, json
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from .models import db, MetadataOverride, Channel, Video, AggregatedShow
+from .models import db, MetadataOverride, Channel, Video, AggregatedShow, AggregatedChannel
 
 # --- CONFIGURATION PATHS ---
 TA_URL = os.getenv("TA_URL", "").strip().rstrip('/')
@@ -36,6 +36,16 @@ def save_settings(settings):
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     with open(SETTINGS_PATH, 'w') as f:
         json.dump(settings, f, indent=4)
+
+def get_active_channel_ids():
+    """
+    Returns a unique set of channel IDs that require synchronization.
+    This includes channels marked as 'is_eligible' in the Editor AND
+    channels that have been added to any Aggregated Show.
+    """
+    eligible_ids = {c.id for c in Channel.query.filter_by(is_eligible=True).all()}
+    aggregated_ids = {ac.channel_id for ac in AggregatedChannel.query.all()}
+    return eligible_ids.union(aggregated_ids)
 
 def get_next_aggregated_id():
     """
@@ -345,7 +355,9 @@ def scan_for_deletions(dry_run=True):
     
     # 2. Sync Videos (Filesystem Snapshot)
     # We assume strict Source structure: SOURCE_DIR / channel_id / {id}*
-    for db_chan in Channel.query.filter_by(is_eligible=True).all():
+    active_ids = get_active_channel_ids()
+    active_channels = Channel.query.filter(Channel.id.in_(active_ids)).all()
+    for db_chan in active_channels:
         src_chan_path = SOURCE_DIR / db_chan.id
         if not src_chan_path.exists(): continue
 

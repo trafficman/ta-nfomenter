@@ -6,7 +6,8 @@ from app.models import db, Channel, Video, MetadataOverride
 from app.utils import (
     get_ta_paginated, get_effective_metadata, write_xml, 
     safe_cleanup_video, safe_delete_channel_folder, scan_for_deletions, sync_channel_folders, get_base_metadata,
-    nfo_needs_update, sanitize, normalize_text, read_nfo_id, DEST_DIR, SOURCE_DIR, CACHE_CH, CACHE_VID, get_channel_dest_path, get_settings
+    nfo_needs_update, sanitize, normalize_text, read_nfo_id, DEST_DIR, SOURCE_DIR, CACHE_CH, CACHE_VID, 
+    get_channel_dest_path, get_settings, get_active_channel_ids
 )
 
 editor_bp = Blueprint('editor', __name__, template_folder='templates')
@@ -37,34 +38,6 @@ def index():
         video_map.setdefault(v.channel_id, []).append(v)
 
     return render_template('editor.html', channels=channels, video_map=video_map, title_overrides=title_overrides)
-
-@editor_bp.route('/api/sync_all', methods=['POST'])
-def sync_all():
-    eligible = Channel.query.filter_by(is_eligible=True).all()
-    for chan in eligible:
-        v_data = get_ta_paginated(f"api/video/?channel={chan.id}")
-        if v_data:
-            # Fetch existing IDs for this channel once to optimize syncing
-            existing_ids = {v.id for v in Video.query.filter_by(channel_id=chan.id).all()}
-
-            v_data.sort(key=lambda x: x.get('published', '9999'))
-            chan.premiered = v_data[0].get('published', '')[:10]
-            chan.oldest_year = chan.premiered[:4] if chan.premiered else "2005"
-            
-            for v in v_data:
-                vid_id = v.get('youtube_id')
-                if vid_id not in existing_ids:
-                    pub = v.get('published', '')[:10]
-                    db.session.add(Video(
-                        id=vid_id, channel_id=chan.id, title=v.get('title'),
-                        description=v.get('description', ''), published_at=pub,
-                        season=pub[:4], episode=pub[5:7] + pub[8:10], 
-                        is_enabled=True
-                    ))
-                    # Prevent duplicates if the API returns the same video ID multiple times
-                    existing_ids.add(vid_id)
-    db.session.commit()
-    return jsonify({"status": "success"})
 
 @editor_bp.route('/api/get_metadata/<item_id>')
 def get_metadata(item_id):
@@ -269,9 +242,10 @@ def refresh_metadata():
                     chan.name = c['channel_name']
                     chan.description = c.get('channel_description', '')
 
-    # 2. Refresh Videos for eligible channels
-    eligible = Channel.query.filter_by(is_eligible=True).all()
-    for chan in eligible:
+    # 2. Refresh Videos for all active channels (Editor eligible or Aggregator joined)
+    active_ids = get_active_channel_ids()
+    active_channels = Channel.query.filter(Channel.id.in_(active_ids)).all()
+    for chan in active_channels:
         v_data = get_ta_paginated(f"api/video/?channel={chan.id}")
         for v in v_data:
             vid = Video.query.get(v.get('youtube_id'))
