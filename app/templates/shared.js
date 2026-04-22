@@ -54,6 +54,11 @@ function toggleTree(id) {
 // --- AUTO-INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
     initResizer('resizer', 'footer-pane');
+
+    const ep = document.getElementById('editor-pane');
+    if (ep && ep.dataset.lockMsg) {
+        renderLockedPane(ep, ep.dataset.lockTitle, ep.dataset.lockMsg);
+    }
 });
 
 /**

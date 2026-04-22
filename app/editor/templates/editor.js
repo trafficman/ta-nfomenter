@@ -6,13 +6,6 @@ lp.addEventListener('scroll', () => { rp.scrollTop = lp.scrollTop; });
 rp.addEventListener('scroll', () => { lp.scrollTop = rp.scrollTop; });
 let activeId = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-    const editorPane = document.getElementById('editor-pane');
-    if (editorPane && !activeId) {
-        renderLockedPane(editorPane);
-    }
-});
-
 async function handleItemClick(el) {
     if (!el.dataset.id) return;
     activeId = el.dataset.id;

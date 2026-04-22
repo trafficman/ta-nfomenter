@@ -1,10 +1,3 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const editorPane = document.getElementById('editor-pane');
-    if (editorPane && !currentShowId) {
-        renderLockedPane(editorPane, "Locked", "Select an Aggregated Show to enable editing");
-    }
-});
-
 let activeId = null;
 let currentShowId = null;
 
@@ -107,13 +100,8 @@ async function selectShow(id, name) {
     document.getElementById('current-show-name').textContent = name;
     document.getElementById('no-show-selected').classList.add('hidden');
 
-    // Reset UI state in right pane: Disable first, then fetch
-    const allRows = document.querySelectorAll('#right-pane .item-row');
-    allRows.forEach(el => el.classList.add('is-dimmed'));
-
-    const allCheckboxes = document.querySelectorAll('.source-toggle');
-    allCheckboxes.forEach(el => {
-        el.checked = false;
+    // Wake up the source toggles (enable them for interaction)
+    document.querySelectorAll('.source-toggle').forEach(el => {
         el.disabled = false;
         el.classList.remove('opacity-20', 'cursor-not-allowed');
         el.classList.add('cursor-pointer');
