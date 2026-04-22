@@ -173,7 +173,10 @@ def get_aggregated_video_metadata(show_id, video_id):
         'title': v.title, 'plot': v.description, 'aired': v.published_at,
         'season': v.season, 'episode': v.episode, 'showtitle': chan.name if chan else "Unknown"
     }
-    
+    # Add studio and uniqueid to source for the Master Pane
+    source['studio'] = chan.studio if chan else "YouTube"
+    source['uniqueid'] = v.id
+
     modified = None
     if av:
         show = AggregatedShow.query.get(show_id)
@@ -183,7 +186,9 @@ def get_aggregated_video_metadata(show_id, video_id):
             'aired': av.published_at if av.published_at is not None else v.published_at,
             'season': av.season if av.season is not None else v.season,
             'episode': av.episode if av.episode is not None else v.episode,
-            'showtitle': show.name if show else "Aggregated Show"
+            'showtitle': show.name if show else "Aggregated Show",
+            'studio': show.studio if show else "YouTube",
+            'uniqueid': v.id
         }
     
     return jsonify({"source": source, "modified": modified})

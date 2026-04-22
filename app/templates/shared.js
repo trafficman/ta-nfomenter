@@ -1,6 +1,6 @@
 // --- METADATA CONSTANTS ---
-const METADATA_FIELDS = ['title', 'showtitle', 'season', 'episode', 'aired', 'premiered', 'year', 'studio', 'uniqueid', 'plot'];
-const EDITABLE_FIELDS = ['title', 'season', 'episode', 'aired', 'premiered', 'year', 'studio', 'plot'];
+const METADATA_FIELDS = ['title', 'showtitle', 'season', 'episode', 'aired', 'studio', 'uniqueid', 'plot', 'premiered', 'year'];
+const EDITABLE_FIELDS = ['title', 'season', 'episode', 'aired', 'premiered', 'year', 'plot'];
 
 // --- UI UTILITIES ---
 
@@ -118,68 +118,120 @@ async function fetchMetadata(id) {
 }
 
 /**
- * Renders metadata into Source (master) and Editor panes.
- * masterPane, editorPane, and saveContainer should be DOM elements.
+ * Standardized component for locked/empty states in panels.
  */
-function renderMetadataFields(data, isEligible, masterPane, editorPane, saveContainer = null) {
-    const meta = data.effective || {};
+function renderLockedPane(container, title = "Locked", message = "Select an item to begin editing.") {
+    container.innerHTML = `
+        <div class="h-full flex flex-col items-center justify-center text-gray-600 uppercase font-bold text-[10px] tracking-widest text-center px-6">
+            <span>${title}</span>
+            <span class="mt-2 font-normal normal-case italic text-[9px]">${message}</span>
+        </div>
+    `;
+}
+
+/**
+ * Core utility to build metadata rows.
+ * options: { label, isEditable, isPlot, isMaster, showRevert }
+ */
+function renderMetadataField(container, tag, value, options = {}) {
+    const {
+        label = tag,
+        isEditable = false,
+        isPlot = (tag === 'plot'),
+        isMaster = false,
+        showRevert = false
+    } = options;
+
+    const canEdit = isEditable && EDITABLE_FIELDS.includes(tag);
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'mb-4 px-3';
+
+    // Header Row (Label + Actions)
+    const header = document.createElement('div');
+    header.className = 'flex justify-between items-center mb-1';
+    
+    const labelEl = document.createElement('label');
+    // Labels for Master pane or non-editable Editor fields are grey.
+    labelEl.className = `label-text ${(isMaster || !canEdit) ? 'text-gray-500' : 'text-blue-400'}`;
+    labelEl.textContent = isMaster ? `<${tag.toUpperCase()}>` : label;
+    header.appendChild(labelEl);
+
+    if (showRevert && canEdit) {
+        const revertBtn = document.createElement('button');
+        revertBtn.className = 'text-[8px] font-bold text-gray-600 hover:text-blue-400 uppercase tracking-tighter transition-colors';
+        revertBtn.textContent = 'Revert';
+        revertBtn.onclick = () => {
+            const input = document.getElementById(`edit-${tag}`);
+            const master = document.getElementById(`master-val-${tag}`);
+            if (input && master) input.value = master.textContent;
+        };
+        header.appendChild(revertBtn);
+    }
+    wrapper.appendChild(header);
+
+    // Value display or input
+    // Render as plain text if it's the master pane OR if the field isn't editable in the editor
+    if (isMaster || !canEdit) {
+        const display = document.createElement('div');
+        if (isMaster) display.id = `master-val-${tag}`;
+        display.className = 'pl-2 border-l-2 border-gray-700 text-gray-400 text-xs break-words whitespace-pre-wrap';
+        display.textContent = value !== null ? String(value) : '';
+        wrapper.appendChild(display);
+    } else {
+        const input = document.createElement(isPlot ? 'textarea' : 'input');
+        input.id = `edit-${tag}`;
+        input.className = `input-base text-xs ${isPlot ? 'plot-textarea' : ''}`;
+        if (!isPlot) input.type = 'text';
+        input.value = value !== null ? String(value) : '';
+        wrapper.appendChild(input);
+    }
+
+    container.appendChild(wrapper);
+}
+
+/**
+ * High-level function to render metadata into Source and Editor panes.
+ */
+function renderMetadataFields(data, isEligible, masterPane, editorPane, saveContainer = null, context = 'editor') {
+    const meta = data.effective || data.modified || {};
     const source = data.source || {};
     
-    // Clear existing content
     masterPane.innerHTML = '';
     editorPane.innerHTML = '';
 
-    if (!isEligible) {
-        editorPane.innerHTML = `<div class="h-full flex items-center justify-center text-gray-500 italic">Locked.</div>`;
-    }
-
-    const editorWrapper = document.createElement('div');
-    editorWrapper.className = 'flex flex-col h-full';
-
+    // Render Master Pane
     METADATA_FIELDS.forEach(tag => {
-        if (!(tag in meta)) return;
-
-        const val = meta[tag] !== null ? String(meta[tag]) : '';
-        const sVal = source[tag] !== null ? String(source[tag]) : '';
-        const isPlot = tag === 'plot';
-        const isReadOnly = !EDITABLE_FIELDS.includes(tag);
-
-        // --- Build Master Pane Item ---
-        const mItem = document.createElement('div');
-        mItem.className = 'mb-2';
-        mItem.innerHTML = `<span class="label-text">&lt;${tag}&gt;</span><div class="pl-2 border-l-2 border-gray-700 color-gray-300"></div>`;
-        mItem.querySelector('div').textContent = sVal;
-        masterPane.appendChild(mItem);
-
-        // --- Build Editor Pane Item ---
-        if (isEligible) {
-            const eItem = document.createElement('div');
-            eItem.className = `mb-2 ${isPlot ? 'flex-1 flex flex-col' : ''}`;
-            eItem.innerHTML = `<span class="label-text ${isReadOnly ? '' : 'text-blue-400'}">&lt;${tag}&gt;</span>`;
-            
-            const input = document.createElement(isPlot ? 'textarea' : 'input');
-            input.id = `edit-${tag}`;
-            input.className = `input-base ${isPlot ? 'plot-textarea' : ''}`;
-            if (!isPlot) input.type = 'text';
-            if (isReadOnly) input.disabled = true;
-            input.value = val;
-            
-            eItem.appendChild(input);
-            editorWrapper.appendChild(eItem);
-        }
+        if (tag in source) renderMetadataField(masterPane, tag, source[tag], { isMaster: true });
     });
 
+    // Render Editor Pane
     if (isEligible) {
-        const spacer = document.createElement('div');
-        spacer.className = 'h-6 w-full flex-none';
-        editorWrapper.appendChild(spacer);
-        editorPane.appendChild(editorWrapper);
-    }
+        const fieldsToRender = (data.modified) 
+            ? [
+                {tag:'title', label:'<TITLE>'},
+                {tag:'showtitle', label:'<SHOWTITLE>'},
+                {tag:'season', label:'<SEASON>'},
+                {tag:'episode', label:'<EPISODE>'},
+                {tag:'aired', label:'<AIRED>'},
+                {tag:'studio', label:'<STUDIO>'},
+                {tag:'uniqueid', label:'<UNIQUEID>'},
+                {tag:'plot', label:'<PLOT>'}
+              ]
+            : METADATA_FIELDS.map(tag => ({tag, label: `<${tag.toUpperCase()}>`}));
 
-    // Final spacer for master pane
-    const mSpacer = document.createElement('div');
-    mSpacer.className = 'h-6 w-full flex-none';
-    masterPane.appendChild(mSpacer);
+        fieldsToRender.forEach(f => {
+            if (f.tag in meta) {
+                renderMetadataField(editorPane, f.tag, meta[f.tag], { 
+                    label: f.label, 
+                    isEditable: true,
+                    showRevert: true
+                });
+            }
+        });
+    } else {
+        renderLockedPane(editorPane);
+    }
 
     if (saveContainer) saveContainer.classList.toggle('hidden', !isEligible);
 }

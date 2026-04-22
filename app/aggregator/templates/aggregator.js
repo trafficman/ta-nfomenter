@@ -25,76 +25,22 @@ async function handleItemClick(el) {
     }
 
     if (data) {
-        // Populate Master Pane (Read Only)
         const masterPane = document.getElementById('master-pane');
-        masterPane.innerHTML = '';
-        
-        const source = data.source || {};
-        METADATA_FIELDS.forEach(tag => {
-            if (!(tag in source)) return;
-            const val = source[tag] !== null ? String(source[tag]) : '';
-            const div = document.createElement('div');
-            div.className = 'mb-2';
-            div.innerHTML = `<span class="label-text text-gray-500">&lt;${tag}&gt;</span><div class="pl-2 border-l-2 border-gray-700 text-gray-400 text-xs break-words"></div>`;
-            div.querySelector('div').textContent = val;
-            masterPane.appendChild(div);
-        });
-
-        // Handle Aggregator Editor state
         const editorPane = document.getElementById('editor-pane');
         const saveContainer = document.getElementById('editor-save-container');
 
         if (!currentShowId) {
-            editorPane.innerHTML = `
-                <div class="h-full flex flex-col items-center justify-center text-gray-600 uppercase font-bold text-[10px] tracking-widest">
-                    <span>Locked</span>
-                    <span class="mt-2 font-normal normal-case italic text-center px-4 text-[9px]">Select an Aggregated Show to enable editing</span>
-                </div>
-            `;
-            saveContainer.classList.add('hidden');
+            renderMetadataFields(data, false, masterPane, editorPane, saveContainer, 'aggregator');
+            renderLockedPane(editorPane, "Locked", "Select an Aggregated Show to enable editing");
         } else {
             if (isChannel) {
-                editorPane.innerHTML = `
-                    <div class="h-full flex flex-col items-center justify-center text-gray-500 uppercase font-bold text-[10px] tracking-widest">
-                        <span>Restricted</span>
-                        <span class="mt-2 font-normal normal-case italic text-center px-4 text-[9px]">Channel metadata is managed in the Single-Channel Editor</span>
-                    </div>
-                `;
-                saveContainer.classList.add('hidden');
+                renderMetadataFields(data, false, masterPane, editorPane, saveContainer, 'aggregator');
+                renderLockedPane(editorPane, "Restricted", "Channel metadata is managed in the Single-Channel Editor");
             } else if (!data.modified) {
-                editorPane.innerHTML = `
-                    <div class="h-full flex flex-col items-center justify-center text-gray-600 uppercase font-bold text-[10px] tracking-widest">
-                        <span>Locked</span>
-                        <span class="mt-2 font-normal normal-case italic text-center px-4 text-[9px]">Video must be enabled for this show to edit metadata</span>
-                    </div>
-                `;
-                saveContainer.classList.add('hidden');
+                renderMetadataFields(data, false, masterPane, editorPane, saveContainer, 'aggregator');
+                renderLockedPane(editorPane, "Locked", "Video must be enabled for this show to edit metadata");
             } else {
-                editorPane.innerHTML = '';
-                saveContainer.classList.remove('hidden');
-                
-                const editFields = [
-                    { tag: 'title', label: 'Title', type: 'text' },
-                    { tag: 'season', label: 'Season', type: 'text' },
-                    { tag: 'episode', label: 'Episode', type: 'text' },
-                    { tag: 'aired', label: 'Aired', type: 'text' },
-                    { tag: 'plot', label: 'Plot', type: 'textarea' }
-                ];
-
-                editFields.forEach(f => {
-                    const val = data.modified[f.tag] || '';
-                    const div = document.createElement('div');
-                    div.className = 'mb-4 px-3';
-                    div.innerHTML = `<label class="label-text text-blue-400">${f.label}</label>`;
-                    
-                    const input = f.type === 'textarea' ? document.createElement('textarea') : document.createElement('input');
-                    if (f.type === 'text') input.type = 'text';
-                    input.className = `input-base text-xs ${f.type === 'textarea' ? 'plot-textarea' : ''}`;
-                    input.id = `edit-${f.tag}`;
-                    input.value = val;
-                    div.appendChild(input);
-                    editorPane.appendChild(div);
-                });
+                renderMetadataFields(data, true, masterPane, editorPane, saveContainer, 'aggregator');
             }
         }
     }
