@@ -1,5 +1,9 @@
-// --- Init Shared Logic ---
-initResizer('resizer', 'footer-pane');
+document.addEventListener('DOMContentLoaded', () => {
+    const editorPane = document.getElementById('editor-pane');
+    if (editorPane && !currentShowId) {
+        renderLockedPane(editorPane, "Locked", "Select an Aggregated Show to enable editing");
+    }
+});
 
 let activeId = null;
 let currentShowId = null;

@@ -4,11 +4,14 @@ const rp = document.getElementById('right-pane');
 
 lp.addEventListener('scroll', () => { rp.scrollTop = lp.scrollTop; });
 rp.addEventListener('scroll', () => { lp.scrollTop = rp.scrollTop; });
-
-// --- Init Shared Logic ---
-initResizer('resizer', 'footer-pane');
-
 let activeId = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const editorPane = document.getElementById('editor-pane');
+    if (editorPane && !activeId) {
+        renderLockedPane(editorPane);
+    }
+});
 
 async function handleItemClick(el) {
     if (!el.dataset.id) return;

@@ -51,6 +51,11 @@ function toggleTree(id) {
     });
 }
 
+// --- AUTO-INITIALIZATION ---
+document.addEventListener('DOMContentLoaded', () => {
+    initResizer('resizer', 'footer-pane');
+});
+
 /**
  * Shared Resizer Logic for the footer pane
  */
