@@ -432,16 +432,21 @@ def sync_channel_folders(dry_run=True):
     # 1. Build Map of {UniqueID: [List of Paths]} from disk to detect duplicates
     disk_map = get_folders_by_id()
 
-    # 2. Compare against Database
+    # 2. Build a unified list of sync targets (Channels and Aggregated Shows)
+    targets = []
     for chan in Channel.query.filter_by(is_eligible=True).all():
-        expected_path = get_channel_dest_path(chan)
+        targets.append((chan.id, get_channel_dest_path(chan)))
+    for show in AggregatedShow.query.filter_by(is_active=True).all():
+        targets.append((show.id, get_aggregated_show_dest_path(show)))
+
+    # 3. Compare against Database
+    for target_id, expected_path in targets:
         expected_name = expected_path.name
         
-        paths = disk_map.get(chan.id, [])
+        paths = disk_map.get(target_id, [])
         if not paths:
             continue
 
-        # 3. Identity & Duplicate Management
         # Check if we already have a folder that matches the expected path
         correct_folder = next((p for p in paths if p.resolve() == expected_path.resolve()), None)
         
@@ -456,10 +461,10 @@ def sync_channel_folders(dry_run=True):
             # We found the correct folder. Remove it from the list so we don't "clean it up"
             paths.remove(correct_folder)
 
-        # 4. Cleanup remaining duplicates (folders with the same UID but wrong names)
+        # 4. Cleanup remaining duplicates (folders with the same ID but wrong names)
         for extra in paths:
-            renamed_log.append(f"Duplicate found: Removing '{extra.name}' (Matches ID: {chan.id})")
+            renamed_log.append(f"Duplicate found: Removing '{extra.name}' (Matches ID: {target_id})")
             if not dry_run:
-                safe_delete_channel_folder(extra, chan.id)
+                safe_delete_channel_folder(extra, target_id)
 
     return renamed_log
