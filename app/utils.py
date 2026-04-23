@@ -1,7 +1,7 @@
 import os, requests, glob, shutil, json
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from .models import db, MetadataOverride, Channel, Video, AggregatedShow, AggregatedChannel
+from .models import db, MetadataOverride, Channel, Video, AggregatedShow, AggregatedChannel, AggregatedVideo
 
 # --- CONFIGURATION PATHS ---
 TA_URL = os.getenv("TA_URL", "").strip().rstrip('/')
@@ -192,6 +192,32 @@ def get_channel_dest_path(chan):
     
     return clean_path
 
+def get_aggregated_show_dest_path(show):
+    """Determines the intended destination folder path for an aggregated show, handling collisions."""
+    settings = get_settings()
+    scheme = settings.get("channel_naming_scheme", "{title} ({year})")
+    
+    # Map show attributes to naming scheme variables
+    vars = {'title': show.name, 'year': show.oldest_year, 'id': show.id}
+    standard_name = scheme
+    for k, v in vars.items():
+        standard_name = standard_name.replace(f"{{{k}}}", sanitize(v))
+    
+    standard_name = " ".join(standard_name.split()).strip()
+    clean_path = DEST_DIR / standard_name
+    if not clean_path.exists():
+        return clean_path
+
+    # Check if the existing folder belongs to this aggregated show
+    if read_nfo_id(clean_path / "tvshow.nfo") == show.id:
+        return clean_path
+
+    # Collision detected - append AS_N ID for uniqueness
+    if f"[{show.id}]" not in standard_name:
+        return DEST_DIR / f"{standard_name} [{show.id}]"
+    
+    return clean_path
+
 def get_base_metadata(item_id, item_type, db_item):
     if item_type == 'channel':
         return {
@@ -240,6 +266,22 @@ def get_effective_metadata(item_id, item_type, db_item):
             'studio': chan_meta['studio'],
             'uniqueid': db_item.id
         }
+
+def get_aggregated_metadata(show_id, video_id):
+    show = AggregatedShow.query.get(show_id)
+    v = Video.query.get(video_id)
+    av = AggregatedVideo.query.filter_by(show_id=show_id, video_id=video_id).first()
+    
+    return {
+        'title': av.title if av.title is not None else v.title,
+        'showtitle': show.name,
+        'season': av.season if av.season is not None else v.season,
+        'episode': av.episode if av.episode is not None else v.episode,
+        'plot': av.description if av.description is not None else v.description,
+        'aired': av.published_at if av.published_at is not None else v.published_at,
+        'studio': show.studio,
+        'uniqueid': v.id
+    }
 
 # --- SAFETY HELPERS ---
 def read_nfo_id(nfo_path):

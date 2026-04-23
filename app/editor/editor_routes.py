@@ -2,12 +2,12 @@ import os
 import shutil
 from flask import Blueprint, render_template, jsonify, request
 from sqlalchemy import func
-from app.models import db, Channel, Video, MetadataOverride
+from app.models import db, Channel, Video, MetadataOverride, AggregatedShow, AggregatedVideo
 from app.utils import (
-    get_ta_paginated, get_effective_metadata, write_xml, 
+    get_ta_paginated, get_effective_metadata, get_aggregated_metadata, write_xml, 
     safe_cleanup_video, safe_delete_channel_folder, scan_for_deletions, sync_channel_folders, get_base_metadata,
     nfo_needs_update, sanitize, normalize_text, read_nfo_id, DEST_DIR, SOURCE_DIR, CACHE_CH, CACHE_VID, 
-    get_channel_dest_path, get_settings, get_active_channel_ids
+    get_channel_dest_path, get_aggregated_show_dest_path, get_settings, get_active_channel_ids
 )
 
 editor_bp = Blueprint('editor', __name__, template_folder='templates')
@@ -109,6 +109,7 @@ def export_nfo():
     settings = get_settings()
     sync_channel_folders(dry_run=False)
 
+    # --- PHASE 1: Single-Channel Editor Export (1:1) ---
     all_channels = Channel.query.all()
     
     for chan in all_channels:
@@ -185,6 +186,87 @@ def export_nfo():
                     dest = season_dir / f"{base_fn}{f.suffix.lower()}"
                     if not dest.exists(): os.link(f, dest)
 
+            t_src = CACHE_VID / v.id[0] / f"{v.id}.jpg"
+            t_dest = season_dir / f"{base_fn}-thumb.jpg"
+            if t_src.exists() and not t_dest.exists(): os.link(t_src, t_dest)
+
+            write_xml(target_nfo, "episodedetails", v_meta)
+
+    # --- PHASE 2: Multi-Channel Aggregator Export (N:1) ---
+    all_agg_shows = AggregatedShow.query.all()
+    for show in all_agg_shows:
+        show_root = get_aggregated_show_dest_path(show)
+        
+        if not show.is_active:
+            if show_root.exists():
+                safe_delete_channel_folder(show_root, show.id)
+            continue
+
+        show_root.mkdir(parents=True, exist_ok=True)
+        
+        # Write tvshow.nfo
+        s_meta = {
+            'title': show.name, 'year': show.oldest_year, 'plot': show.description,
+            'premiered': show.premiered, 'studio': show.studio, 'uniqueid': show.id
+        }
+        show_nfo_path = show_root / "tvshow.nfo"
+        if nfo_needs_update(show_nfo_path, s_meta):
+            write_xml(show_nfo_path, "tvshow", s_meta)
+
+        # Process Aggregated Episodes
+        agg_vids = AggregatedVideo.query.filter_by(show_id=show.id).all()
+        for av in agg_vids:
+            v = Video.query.get(av.video_id)
+            if not v: continue
+            
+            v_scheme = settings.get("video_naming_scheme", "{showtitle} - {season}x{episode} - {title} [{id}]")
+            v_meta = get_aggregated_metadata(show.id, v.id)
+            
+            v_vars = {
+                'title': v_meta['title'], 'showtitle': v_meta['showtitle'],
+                'season': v_meta['season'], 'episode': v_meta['episode'], 'id': v.id
+            }
+            base_fn = v_scheme
+            for k, val in v_vars.items():
+                base_fn = base_fn.replace(f"{{{k}}}", sanitize(val))
+            base_fn = " ".join(base_fn.split()).strip()
+
+            season_dir = show_root / f"Season {v_meta['season']}"
+
+            # Collision handling for video filenames
+            potential_nfo = season_dir / f"{base_fn}.nfo"
+            if potential_nfo.exists():
+                existing_uid = read_nfo_id(potential_nfo)
+                if existing_uid and existing_uid != v.id:
+                    if f"[{v.id}]" not in base_fn:
+                        base_fn = f"{base_fn} [{v.id}]"
+            
+            target_nfo = season_dir / f"{base_fn}.nfo"
+
+            # Identity check for updates/renames
+            existing_nfo = None
+            for nfo_file in show_root.rglob("*.nfo"):
+                if nfo_file.name == "tvshow.nfo": continue
+                if read_nfo_id(nfo_file) == v.id:
+                    existing_nfo = nfo_file
+                    break
+
+            if existing_nfo:
+                if not nfo_needs_update(existing_nfo, v_meta) and str(existing_nfo) == str(target_nfo):
+                    continue
+                else:
+                    safe_cleanup_video(show_root, v.id)
+            
+            season_dir.mkdir(exist_ok=True)
+            
+            # Create Links from Source
+            src_f = SOURCE_DIR / v.channel_id
+            for f in src_f.glob(f"{v.id}*"):
+                if f.suffix.lower() in ['.mp4', '.vtt']:
+                    dest = season_dir / f"{base_fn}{f.suffix.lower()}"
+                    if not dest.exists(): os.link(f, dest)
+
+            # Video Thumbnails
             t_src = CACHE_VID / v.id[0] / f"{v.id}.jpg"
             t_dest = season_dir / f"{base_fn}-thumb.jpg"
             if t_src.exists() and not t_dest.exists(): os.link(t_src, t_dest)
