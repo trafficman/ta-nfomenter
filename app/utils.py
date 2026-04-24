@@ -329,7 +329,15 @@ def safe_cleanup_video(parent_dir, target_id):
     # Safety: ensure strict boundary check
     if not parent.exists() or not parent.is_relative_to(DEST_DIR.resolve()): return
     
-    for nfo_file in parent_dir.rglob("*.nfo"):
+    # Use list() to build the collection before mutation to avoid iterator crashes
+    # when Season folders are deleted.
+    try:
+        nfo_files = list(parent_dir.rglob("*.nfo"))
+    except FileNotFoundError:
+        # parent_dir itself or a subdirectory was removed during the scan
+        return
+
+    for nfo_file in nfo_files:
         if nfo_file.name == "tvshow.nfo": continue
         if read_nfo_id(nfo_file) == target_id:
             stem = nfo_file.stem 
@@ -344,6 +352,12 @@ def safe_cleanup_video(parent_dir, target_id):
             for thumb in glob.glob(thumb_pattern):
                 try: os.remove(thumb)
                 except: pass
+            # Attempt to remove the parent folder (e.g. Season folder) if it is now empty
+            try:
+                if folder.resolve() != parent and not any(folder.iterdir()):
+                    folder.rmdir()
+            except: pass
+            break # Video found and purged, stop searching this tree
 
 def normalize_text(text):
     if not text: return ""
@@ -395,6 +409,17 @@ def scan_for_deletions(dry_run=True):
                 # Remove from DB
                 db.session.delete(db_chan)
     
+    # 1b. Sync Aggregated Shows (Identify orphaned folders on disk)
+    active_as_ids = {s.id for s in AggregatedShow.query.all()}
+    # Iterate through folders on disk that have AS_ IDs
+    for uid, folders in id_map.items():
+        if uid.startswith("AS_") and uid not in active_as_ids:
+            for folder in folders:
+                deleted_log["channels"].append(f"Aggregated Show: {folder.name}")
+                if not dry_run:
+                    # safe_delete handles the NFO check and path scoping
+                    safe_delete_channel_folder(folder, uid)
+
     # 2. Sync Videos (Filesystem Snapshot)
     # We assume strict Source structure: SOURCE_DIR / channel_id / {id}*
     active_ids = get_active_channel_ids()
@@ -413,8 +438,10 @@ def scan_for_deletions(dry_run=True):
             if not any(f.startswith(db_vid.id) for f in src_filenames):
                 deleted_log["videos"].append(f"{db_vid.title} [{db_vid.id}]")
                 if not dry_run:
-                    for folder in id_map.get(db_chan.id, []):
-                        safe_cleanup_video(folder, db_vid.id)
+                    # Purge from ALL destination folders (1:1 and Aggregated)
+                    for folders in id_map.values():
+                        for folder in folders:
+                            safe_cleanup_video(folder, db_vid.id)
                     db.session.delete(db_vid)
 
     if not dry_run:

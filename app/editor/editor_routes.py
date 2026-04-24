@@ -215,6 +215,16 @@ def export_nfo():
 
         # Process Aggregated Episodes
         agg_vids = AggregatedVideo.query.filter_by(show_id=show.id).all()
+        
+        # Orphan Cleanup: Remove videos from disk that are no longer joined to this show
+        valid_vid_ids = {av.video_id for av in agg_vids}
+        if show_root.exists():
+            for nfo_file in list(show_root.rglob("*.nfo")):
+                if nfo_file.name == "tvshow.nfo": continue
+                vid_id = read_nfo_id(nfo_file)
+                if vid_id and vid_id not in valid_vid_ids:
+                    safe_cleanup_video(show_root, vid_id)
+
         for av in agg_vids:
             v = Video.query.get(av.video_id)
             if not v: continue
