@@ -18,13 +18,13 @@ def update_app_settings():
 @main_bp.route('/api/sync_all', methods=['POST'])
 def sync_all():
     active_ids = get_active_channel_ids()
-    active_channels = Channel.query.filter(Channel.id.in_(active_ids)).all()
+    active_channels = db.session.scalars(db.select(Channel).where(Channel.id.in_(active_ids))).all()
     
     for chan in active_channels:
         v_data = get_ta_paginated(f"api/video/?channel={chan.id}")
         if v_data:
             # Fetch existing IDs for this channel once to optimize syncing
-            existing_ids = {v.id for v in Video.query.filter_by(channel_id=chan.id).all()}
+            existing_ids = {v.id for v in db.session.scalars(db.select(Video).filter_by(channel_id=chan.id)).all()}
 
             v_data.sort(key=lambda x: x.get('published', '9999'))
             chan.premiered = v_data[0].get('published', '')[:10]

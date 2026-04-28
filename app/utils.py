@@ -43,8 +43,8 @@ def get_active_channel_ids():
     This includes channels marked as 'is_eligible' in the Editor AND
     channels that have been added to any Aggregated Show.
     """
-    eligible_ids = {c.id for c in Channel.query.filter_by(is_eligible=True).all()}
-    aggregated_ids = {ac.channel_id for ac in AggregatedChannel.query.all()}
+    eligible_ids = {c.id for c in db.session.scalars(db.select(Channel).filter_by(is_eligible=True)).all()}
+    aggregated_ids = {ac.channel_id for ac in db.session.scalars(db.select(AggregatedChannel)).all()}
     return eligible_ids.union(aggregated_ids)
 
 def get_next_aggregated_id():
@@ -52,7 +52,7 @@ def get_next_aggregated_id():
     Calculates the next available AggregatedShow ID in the format AS_N.
     Parses existing IDs to find the highest current integer.
     """
-    shows = AggregatedShow.query.all()
+    shows = db.session.scalars(db.select(AggregatedShow)).all()
     nums = []
     for s in shows:
         if s.id and s.id.startswith("AS_"):
@@ -229,7 +229,7 @@ def get_base_metadata(item_id, item_type, db_item):
             'uniqueid': db_item.id 
         }
     else:
-        chan = Channel.query.get(db_item.channel_id)
+        chan = db.session.get(Channel, db_item.channel_id)
         return {
             'title': db_item.title,
             'showtitle': chan.name,
@@ -242,7 +242,7 @@ def get_base_metadata(item_id, item_type, db_item):
         }
 
 def get_effective_metadata(item_id, item_type, db_item):
-    overrides = {o.field_name: o.new_value for o in MetadataOverride.query.filter_by(target_id=item_id).all()}
+    overrides = {o.field_name: o.new_value for o in db.session.scalars(db.select(MetadataOverride).filter_by(target_id=item_id)).all()}
     
     if item_type == 'channel':
         return {
@@ -254,7 +254,7 @@ def get_effective_metadata(item_id, item_type, db_item):
             'uniqueid': db_item.id 
         }
     else:
-        chan = Channel.query.get(db_item.channel_id)
+        chan = db.session.get(Channel, db_item.channel_id)
         chan_meta = get_effective_metadata(chan.id, 'channel', chan)
         return {
             'title': overrides.get('title', db_item.title),
@@ -268,9 +268,9 @@ def get_effective_metadata(item_id, item_type, db_item):
         }
 
 def get_aggregated_metadata(show_id, video_id):
-    show = AggregatedShow.query.get(show_id)
-    v = Video.query.get(video_id)
-    av = AggregatedVideo.query.filter_by(show_id=show_id, video_id=video_id).first()
+    show = db.session.get(AggregatedShow, show_id)
+    v = db.session.get(Video, video_id)
+    av = db.session.scalars(db.select(AggregatedVideo).filter_by(show_id=show_id, video_id=video_id)).first()
     
     return {
         'title': av.title if av.title is not None else v.title,
@@ -399,7 +399,7 @@ def scan_for_deletions(dry_run=True):
     api_channels = get_ta_paginated("api/channel")
     active_c_ids = {c['channel_id'] for c in api_channels}
     
-    for db_chan in Channel.query.all():
+    for db_chan in db.session.scalars(db.select(Channel)).all():
         if db_chan.id not in active_c_ids:
             deleted_log["channels"].append(db_chan.name)
             if not dry_run:
@@ -410,7 +410,7 @@ def scan_for_deletions(dry_run=True):
                 db.session.delete(db_chan)
     
     # 1b. Sync Aggregated Shows (Identify orphaned folders on disk)
-    active_as_ids = {s.id for s in AggregatedShow.query.all()}
+    active_as_ids = {s.id for s in db.session.scalars(db.select(AggregatedShow)).all()}
     # Iterate through folders on disk that have AS_ IDs
     for uid, folders in id_map.items():
         if uid.startswith("AS_") and uid not in active_as_ids:
@@ -423,7 +423,7 @@ def scan_for_deletions(dry_run=True):
     # 2. Sync Videos (Filesystem Snapshot)
     # We assume strict Source structure: SOURCE_DIR / channel_id / {id}*
     active_ids = get_active_channel_ids()
-    active_channels = Channel.query.filter(Channel.id.in_(active_ids)).all()
+    active_channels = db.session.scalars(db.select(Channel).where(Channel.id.in_(active_ids))).all()
     for db_chan in active_channels:
         src_chan_path = SOURCE_DIR / db_chan.id
         if not src_chan_path.exists(): continue
@@ -433,7 +433,7 @@ def scan_for_deletions(dry_run=True):
             src_filenames = set(os.listdir(src_chan_path))
         except OSError: continue
 
-        for db_vid in Video.query.filter_by(channel_id=db_chan.id).all():
+        for db_vid in db.session.scalars(db.select(Video).filter_by(channel_id=db_chan.id)).all():
             # Fast check: Does any file in the list start with the Video ID?
             if not any(f.startswith(db_vid.id) for f in src_filenames):
                 deleted_log["videos"].append(f"{db_vid.title} [{db_vid.id}]")
@@ -461,9 +461,9 @@ def sync_channel_folders(dry_run=True):
 
     # 2. Build a unified list of sync targets (Channels and Aggregated Shows)
     targets = []
-    for chan in Channel.query.filter_by(is_eligible=True).all():
+    for chan in db.session.scalars(db.select(Channel).filter_by(is_eligible=True)).all():
         targets.append((chan.id, get_channel_dest_path(chan)))
-    for show in AggregatedShow.query.filter_by(is_active=True).all():
+    for show in db.session.scalars(db.select(AggregatedShow).filter_by(is_active=True)).all():
         targets.append((show.id, get_aggregated_show_dest_path(show)))
 
     # 3. Compare against Database
