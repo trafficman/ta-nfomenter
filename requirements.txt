@@ -3,3 +3,5 @@ flask
 flask-sqlalchemy
 gunicorn
 flask-migrate
+pytest
+pytest-mock

@@ -31,35 +31,37 @@ def create_app():
         app.register_blueprint(editor_bp)
         app.register_blueprint(aggregator_bp, url_prefix='/aggregator')
 
-        # Perform startup path validation checks
-        from .utils import SOURCE_DIR, DEST_DIR, is_ta_youtube_structure, is_hardlink_compatible
+        # Skip path validation during automated tests to prevent sys.exit()
+        if not os.environ.get('PYTEST_CURRENT_TEST'):
+            # Perform startup path validation checks
+            from .utils import SOURCE_DIR, DEST_DIR, is_ta_youtube_structure, is_hardlink_compatible
 
-        # 1. Existence Checks
-        if not SOURCE_DIR.exists():
-            print(f"[!] ERROR: SOURCE_DIR does not exist: {SOURCE_DIR}")
-            sys.exit(1)
-        if not DEST_DIR.exists():
-            print(f"[!] ERROR: DEST_DIR does not exist: {DEST_DIR}")
-            sys.exit(1)
-
-        # 2. Heuristic Checks
-        is_source_ta = is_ta_youtube_structure(SOURCE_DIR)
-        is_dest_ta = is_ta_youtube_structure(DEST_DIR)
-
-        if is_source_ta and not is_dest_ta:
-            if not is_hardlink_compatible(SOURCE_DIR, DEST_DIR):
-                print("[!] ERROR: Source and Destination directories are on different filesystems. Hardlinks will not function. Did your single mounted volume contain BOTH Source and Destination folders?")
+            # 1. Existence Checks
+            if not SOURCE_DIR.exists():
+                print(f"[!] ERROR: SOURCE_DIR does not exist: {SOURCE_DIR}")
                 sys.exit(1)
-            print("[*] Path validation successful: SOURCE_DIR is a TA /youtube folder and DEST_DIR is safe. Proceeding...")
-        elif not is_source_ta and not is_dest_ta:
-            print("[!] ERROR: No TubeArchivist /youtube folder found, DEST_DIR must be the folder where TA stores all of its videos")
-            sys.exit(1)
-        elif not is_source_ta and is_dest_ta:
-            print("[!] ERROR: Destination directory detected as TubeArchivist /youtube folder, did you swap Source and Destination?")
-            sys.exit(1)
-        elif is_source_ta and is_dest_ta:
-            print("[!] ERROR: Both Source and Destination directories detected as TubeArchivist /youtube folders, choose a different directory for Destination")
-            sys.exit(1)
+            if not DEST_DIR.exists():
+                print(f"[!] ERROR: DEST_DIR does not exist: {DEST_DIR}")
+                sys.exit(1)
+
+            # 2. Heuristic Checks
+            is_source_ta = is_ta_youtube_structure(SOURCE_DIR)
+            is_dest_ta = is_ta_youtube_structure(DEST_DIR)
+
+            if is_source_ta and not is_dest_ta:
+                if not is_hardlink_compatible(SOURCE_DIR, DEST_DIR):
+                    print("[!] ERROR: Source and Destination directories are on different filesystems. Hardlinks will not function. Did your single mounted volume contain BOTH Source and Destination folders?")
+                    sys.exit(1)
+                print("[*] Path validation successful: SOURCE_DIR is a TA /youtube folder and DEST_DIR is safe. Proceeding...")
+            elif not is_source_ta and not is_dest_ta:
+                print("[!] ERROR: No TubeArchivist /youtube folder found, DEST_DIR must be the folder where TA stores all of its videos")
+                sys.exit(1)
+            elif not is_source_ta and is_dest_ta:
+                print("[!] ERROR: Destination directory detected as TubeArchivist /youtube folder, did you swap Source and Destination?")
+                sys.exit(1)
+            elif is_source_ta and is_dest_ta:
+                print("[!] ERROR: Both Source and Destination directories detected as TubeArchivist /youtube folders, choose a different directory for Destination")
+                sys.exit(1)
 
         # Programmatically apply migrations on startup.
         # This ensures the user's database is always in sync with the current models.
