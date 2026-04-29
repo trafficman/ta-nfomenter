@@ -13,8 +13,7 @@ def app():
     test_data_dir = Path("./tests/tmp_data")
     test_data_dir.mkdir(parents=True, exist_ok=True)
     
-    app = create_app()
-    app.config.update({
+    app = create_app({
         "TESTING": True,
         "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
         "SQLALCHEMY_TRACK_MODIFICATIONS": False,

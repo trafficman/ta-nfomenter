@@ -10,7 +10,7 @@ def index():
     # Initial discovery logic mirrored from the single-channel editor
     raw = get_ta_paginated("api/channel")
     for c in raw:
-        if not Channel.query.get(c['channel_id']):
+        if not db.session.get(Channel, c['channel_id']):
             db.session.add(Channel(
                 id=c['channel_id'], 
                 name=c['channel_name'], 
@@ -20,9 +20,9 @@ def index():
             ))
     db.session.commit()
 
-    channels = Channel.query.order_by(func.lower(Channel.name)).all()
-    all_videos = Video.query.order_by(Video.published_at.desc()).all()
-    aggregated_shows = AggregatedShow.query.order_by(AggregatedShow.name).all()
+    channels = db.session.scalars(db.select(Channel).order_by(func.lower(Channel.name))).all()
+    all_videos = db.session.scalars(db.select(Video).order_by(Video.published_at.desc())).all()
+    aggregated_shows = db.session.scalars(db.select(AggregatedShow).order_by(AggregatedShow.name)).all()
     
     video_map = {}
     for v in all_videos:
@@ -57,7 +57,7 @@ def create_show():
 
 @aggregator_bp.route('/api/get_show/<show_id>')
 def get_show(show_id):
-    show = AggregatedShow.query.get(show_id)
+    show = db.session.get(AggregatedShow, show_id)
     if not show:
         return jsonify({"status": "error", "message": "Show not found"}), 404
     return jsonify({
@@ -70,7 +70,7 @@ def get_show(show_id):
 
 @aggregator_bp.route('/api/update_show/<show_id>', methods=['POST'])
 def update_show(show_id):
-    show = AggregatedShow.query.get(show_id)
+    show = db.session.get(AggregatedShow, show_id)
     if not show:
         return jsonify({"status": "error", "message": "Show not found"}), 404
         
@@ -88,13 +88,13 @@ def update_show(show_id):
 
 @aggregator_bp.route('/api/delete_show/<show_id>', methods=['POST'])
 def delete_show(show_id):
-    show = AggregatedShow.query.get(show_id)
+    show = db.session.get(AggregatedShow, show_id)
     if not show:
         return jsonify({"status": "error", "message": "Show not found"}), 404
 
     # Manually clean up associated records in join tables
-    AggregatedVideo.query.filter_by(show_id=show_id).delete()
-    AggregatedChannel.query.filter_by(show_id=show_id).delete()
+    db.session.execute(db.delete(AggregatedVideo).filter_by(show_id=show_id))
+    db.session.execute(db.delete(AggregatedChannel).filter_by(show_id=show_id))
     
     db.session.delete(show)
     db.session.commit()
@@ -103,13 +103,13 @@ def delete_show(show_id):
 @aggregator_bp.route('/api/show_joins/<show_id>')
 def get_show_joins(show_id):
     """Returns lists of joined channel and video IDs for a specific show."""
-    channels = [c.channel_id for c in AggregatedChannel.query.filter_by(show_id=show_id).all()]
+    channels = db.session.scalars(db.select(AggregatedChannel.channel_id).filter_by(show_id=show_id)).all()
     
     # For the left pane, we need full video details to organize by season
-    agg_videos = AggregatedVideo.query.filter_by(show_id=show_id).all()
+    agg_videos = db.session.scalars(db.select(AggregatedVideo).filter_by(show_id=show_id)).all()
     video_details = []
     for av in agg_videos:
-        v = Video.query.get(av.video_id)
+        v = db.session.get(Video, av.video_id)
         if not v: continue
         video_details.append({
             "id": v.id,
@@ -136,7 +136,7 @@ def toggle_channel():
     sid, cid, state = data.get('show_id'), data.get('channel_id'), data.get('state')
     if not sid or not cid: return jsonify({"status": "error", "message": "Missing IDs"}), 400
 
-    existing = AggregatedChannel.query.filter_by(show_id=sid, channel_id=cid).first()
+    existing = db.session.scalars(db.select(AggregatedChannel).filter_by(show_id=sid, channel_id=cid)).first()
     if state and not existing:
         db.session.add(AggregatedChannel(show_id=sid, channel_id=cid))
     elif not state and existing:
@@ -151,7 +151,7 @@ def toggle_video():
     sid, vid, state = data.get('show_id'), data.get('video_id'), data.get('state')
     if not sid or not vid: return jsonify({"status": "error", "message": "Missing IDs"}), 400
 
-    existing = AggregatedVideo.query.filter_by(show_id=sid, video_id=vid).first()
+    existing = db.session.scalars(db.select(AggregatedVideo).filter_by(show_id=sid, video_id=vid)).first()
     if state and not existing:
         db.session.add(AggregatedVideo(show_id=sid, video_id=vid))
     elif not state and existing:
@@ -163,11 +163,11 @@ def toggle_video():
 @aggregator_bp.route('/api/video_metadata/<show_id>/<video_id>')
 def get_aggregated_video_metadata(show_id, video_id):
     """Returns source metadata and custom overrides for a video in an aggregated show."""
-    v = Video.query.get(video_id)
+    v = db.session.get(Video, video_id)
     if not v: return jsonify({"status": "error"}), 404
     
-    chan = Channel.query.get(v.channel_id)
-    av = AggregatedVideo.query.filter_by(show_id=show_id, video_id=video_id).first()
+    chan = db.session.get(Channel, v.channel_id)
+    av = db.session.scalars(db.select(AggregatedVideo).filter_by(show_id=show_id, video_id=video_id)).first()
     
     source = {
         'title': v.title, 'plot': v.description, 'aired': v.published_at,
@@ -179,7 +179,7 @@ def get_aggregated_video_metadata(show_id, video_id):
 
     modified = None
     if av:
-        show = AggregatedShow.query.get(show_id)
+        show = db.session.get(AggregatedShow, show_id)
         modified = {
             'title': av.title if av.title is not None else v.title,
             'plot': av.description if av.description is not None else v.description,
@@ -198,10 +198,10 @@ def save_aggregated_video_metadata():
     data = request.json
     sid, vid, meta = data.get('show_id'), data.get('video_id'), data.get('metadata', {})
     
-    av = AggregatedVideo.query.filter_by(show_id=sid, video_id=vid).first()
+    av = db.session.scalars(db.select(AggregatedVideo).filter_by(show_id=sid, video_id=vid)).first()
     if not av: return jsonify({"status": "error", "message": "Video not joined to show"}), 404
     
-    v = Video.query.get(vid)
+    v = db.session.get(Video, vid)
     # Inheritance: Store as NULL if value matches base metadata
     av.title = meta.get('title') if meta.get('title') != v.title else None
     av.description = meta.get('plot') if meta.get('plot') != v.description else None

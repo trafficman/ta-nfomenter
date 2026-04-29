@@ -4,18 +4,22 @@ from flask import Flask
 from .models import db
 from flask_migrate import Migrate, upgrade, stamp
 
-def create_app():
+def create_app(test_config=None):
     app = Flask(__name__)
     
-    # Path to DB relative to project root
     basedir = os.path.abspath(os.path.dirname(__file__))
-    data_dir = os.path.join(os.path.dirname(basedir), 'data')
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
-    db_path = os.path.join(data_dir, 'nfomenter.db')
 
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(data_dir, 'nfomenter.db')
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    if test_config:
+        # If testing, use the provided config (e.g., :memory: DB)
+        app.config.update(test_config)
+    else:
+        # Standard Production/Development configuration
+        data_dir = os.path.join(os.path.dirname(basedir), 'data')
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+        
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(data_dir, 'nfomenter.db')
+        app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     db.init_app(app)
     # We store the migrate object to potentially use it for programmatic access
@@ -31,8 +35,8 @@ def create_app():
         app.register_blueprint(editor_bp)
         app.register_blueprint(aggregator_bp, url_prefix='/aggregator')
 
-        # Skip path validation during automated tests to prevent sys.exit()
-        if not os.environ.get('PYTEST_CURRENT_TEST'):
+        # Skip path validation during testing
+        if not app.testing:
             # Perform startup path validation checks
             from .utils import SOURCE_DIR, DEST_DIR, is_ta_youtube_structure, is_hardlink_compatible
 
@@ -62,41 +66,42 @@ def create_app():
             elif is_source_ta and is_dest_ta:
                 print("[!] ERROR: Both Source and Destination directories detected as TubeArchivist /youtube folders, choose a different directory for Destination")
                 sys.exit(1)
+        # Programmatically apply migrations on startup (skipped during testing)
+        if not app.testing:
+            # This ensures the user's database is always in sync with the current models.
+            # If no migrations folder exists (fresh dev environment), it falls back to create_all.
+            project_root = os.path.dirname(basedir)
+            migrations_dir = os.path.join(project_root, 'migrations')
 
-        # Programmatically apply migrations on startup.
-        # This ensures the user's database is always in sync with the current models.
-        # If no migrations folder exists (fresh dev environment), it falls back to create_all.
-        project_root = os.path.dirname(basedir)
-        migrations_dir = os.path.join(project_root, 'migrations')
+            if os.path.exists(migrations_dir):
+                try:
+                    from sqlalchemy import inspect
+                    inspector = inspect(db.engine)
+                    tables = inspector.get_table_names()
 
-        if os.path.exists(migrations_dir):
-            try:
-                from sqlalchemy import inspect
-                inspector = inspect(db.engine)
-                tables = inspector.get_table_names()
+                    # Check for the primary 'channel' table to ensure schema exists
+                    if "channel" not in tables:
+                        # Case 1: Brand new installation
+                        print("[*] No database detected. Initializing from models...")
+                        db.create_all()
+                        print("[*] Stamping database with latest migration version...")
+                        stamp(directory=migrations_dir)
+                    elif "channel" in tables and "alembic_version" not in tables:
+                        # Case 2: Existing user from before the migration system was added
+                        print("[*] Existing legacy database detected. Stamping as baseline...")
+                        # We stamp it with the baseline ID so upgrade() only runs the NEW migrations
+                        stamp(directory=migrations_dir, revision='8c5b79466278')
+                        print("[*] Applying updates...")
+                        upgrade(directory=migrations_dir)
+                    else:
+                        # Case 3: Standard update for an already migrated database
+                        print("[*] Checking for database migrations...")
+                        upgrade(directory=migrations_dir)
 
-                if not os.path.exists(db_path) or not tables:
-                    # Case 1: Brand new installation
-                    print("[*] No database detected. Initializing from models...")
-                    db.create_all()
-                    print("[*] Stamping database with latest migration version...")
-                    stamp(directory=migrations_dir)
-                elif "channel" in tables and "alembic_version" not in tables:
-                    # Case 2: Existing user from before the migration system was added
-                    print("[*] Existing legacy database detected. Stamping as baseline...")
-                    # We stamp it with the baseline ID so upgrade() only runs the NEW migrations
-                    stamp(directory=migrations_dir, revision='8c5b79466278')
-                    print("[*] Applying updates...")
-                    upgrade(directory=migrations_dir)
-                else:
-                    # Case 3: Standard update for an already migrated database
-                    print("[*] Checking for database migrations...")
-                    upgrade(directory=migrations_dir)
-
-                print("[*] Database is up to date.")
-            except Exception as e:
-                print(f"[!] Migration Error: {e}")
-        else:
-            db.create_all()
+                    print("[*] Database is up to date.")
+                except Exception as e:
+                    print(f"[!] Migration Error: {e}")
+            else:
+                db.create_all()
 
     return app
