@@ -33,7 +33,7 @@ async function handleItemClick(el) {
             if (isChannel) {
                 renderMetadataFields(data, false, masterPane, editorPane, saveContainer, 'aggregator');
                 renderLockedPane(editorPane, "Restricted", "Channel metadata is managed in the Single-Channel Editor");
-            } else if (!data.modified) {
+            } else if (!data.modified || !data.modified.is_enabled) {
                 renderMetadataFields(data, false, masterPane, editorPane, saveContainer, 'aggregator');
                 renderLockedPane(editorPane, "Locked", "Video must be enabled for this show to edit metadata");
             } else {
@@ -122,12 +122,28 @@ async function refreshShowPreview() {
         document.querySelectorAll('#right-pane .item-row').forEach(el => el.classList.add('is-dimmed'));
         document.querySelectorAll('.source-toggle').forEach(el => el.checked = false);
 
-        [...joins.channels, ...joins.videos].forEach(targetId => {
-            const row = document.getElementById(`right-item-${targetId}`);
+        // Update Channels in Right Pane (Source)
+        Object.entries(joins.channels).forEach(([id, enabled]) => {
+            const row = document.getElementById(`right-item-${id}`);
             if (!row) return;
-            row.classList.remove('is-dimmed');
+            
+            if (enabled) row.classList.remove('is-dimmed');
+
             const cb = row.querySelector('.source-toggle');
-            if (cb) cb.checked = true;
+            if (cb) cb.checked = enabled;
+        });
+
+        // Update Videos in Right Pane (Source)
+        joins.left_pane.forEach(ep => {
+            const row = document.getElementById(`right-item-${ep.id}`);
+            if (!row) return;
+            
+            // Reflect the enabled state
+            if (ep.is_enabled) {
+                row.classList.remove('is-dimmed');
+            }
+            const cb = row.querySelector('.source-toggle');
+            if (cb) cb.checked = ep.is_enabled;
         });
 
         // Build Left Pane (Aggregated Preview) grouped by Season
@@ -137,6 +153,7 @@ async function refreshShowPreview() {
 
         const seasons = {};
         joins.left_pane.forEach(v => {
+            if (!v.is_enabled) return; // Only show enabled videos in the preview
             if (!seasons[v.season]) seasons[v.season] = [];
             seasons[v.season].push(v);
         });

@@ -43,6 +43,7 @@ class AggregatedChannel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     show_id = db.Column(db.String(50), db.ForeignKey('aggregated_show.id'))
     channel_id = db.Column(db.String(50), db.ForeignKey('channel.id'))
+    is_enabled = db.Column(db.Boolean, default=True)
 
 class AggregatedVideo(db.Model):
     """Links a Video to an AggregatedShow with dedicated aggregator metadata."""
@@ -55,3 +56,4 @@ class AggregatedVideo(db.Model):
     published_at = db.Column(db.String(10), nullable=True) 
     season = db.Column(db.String(4), nullable=True)
     episode = db.Column(db.String(4), nullable=True)
+    is_enabled = db.Column(db.Boolean, default=True)

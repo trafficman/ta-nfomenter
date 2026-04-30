@@ -1,6 +1,6 @@
 import os
 from flask import Blueprint, jsonify, request
-from .models import db, Channel, Video, AggregatedShow, AggregatedVideo
+from .models import db, Channel, Video, AggregatedShow, AggregatedChannel, AggregatedVideo
 from .utils import (
     get_settings, save_settings, get_ta_paginated, get_active_channel_ids,
     get_effective_metadata, get_base_metadata, sync_channel_folders,
@@ -179,6 +179,12 @@ def export_nfo():
         if nfo_needs_update(show_nfo_path, s_meta):
             write_xml(show_nfo_path, "tvshow", s_meta)
 
+        # Identify channels disabled specifically for this aggregated show
+        disabled_channel_ids = set(db.session.scalars(
+            db.select(AggregatedChannel.channel_id)
+            .filter_by(show_id=show.id, is_enabled=False)
+        ).all())
+
         # Process Aggregated Episodes
         agg_vids = db.session.scalars(db.select(AggregatedVideo).filter_by(show_id=show.id)).all()
         
@@ -194,6 +200,11 @@ def export_nfo():
         for av in agg_vids:
             v = db.session.get(Video, av.video_id)
             if not v: continue
+
+            # Respect is_enabled flags for both the specific video join and the parent channel join
+            if not av.is_enabled or v.channel_id in disabled_channel_ids:
+                safe_cleanup_video(show_root, v.id)
+                continue
             
             v_scheme = settings.get("video_naming_scheme", "{showtitle} - {season}x{episode} - {title} [{id}]")
             v_meta = get_aggregated_metadata(show.id, v.id)

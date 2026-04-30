@@ -103,7 +103,9 @@ def delete_show(show_id):
 @aggregator_bp.route('/api/show_joins/<show_id>')
 def get_show_joins(show_id):
     """Returns lists of joined channel and video IDs for a specific show."""
-    channels = db.session.scalars(db.select(AggregatedChannel.channel_id).filter_by(show_id=show_id)).all()
+    # We now need the ID and the enabled state
+    chan_joins = db.session.execute(db.select(AggregatedChannel.channel_id, AggregatedChannel.is_enabled).filter_by(show_id=show_id)).all()
+    channels = {c.channel_id: c.is_enabled for c in chan_joins}
     
     # For the left pane, we need full video details to organize by season
     agg_videos = db.session.scalars(db.select(AggregatedVideo).filter_by(show_id=show_id)).all()
@@ -115,7 +117,8 @@ def get_show_joins(show_id):
             "id": v.id,
             "title": av.title or v.title,
             "season": av.season or v.season or "0",
-            "episode": av.episode or v.episode or "0"
+            "episode": av.episode or v.episode or "0",
+            "is_enabled": av.is_enabled
         })
     
     # Sort by season then episode
@@ -125,7 +128,7 @@ def get_show_joins(show_id):
     ))
 
     return jsonify({
-        "channels": channels, 
+        "channels": channels, # Now a dict: {id: bool}
         "videos": [v['id'] for v in video_details],
         "left_pane": video_details
     })
@@ -137,10 +140,13 @@ def toggle_channel():
     if not sid or not cid: return jsonify({"status": "error", "message": "Missing IDs"}), 400
 
     existing = db.session.scalars(db.select(AggregatedChannel).filter_by(show_id=sid, channel_id=cid)).first()
-    if state and not existing:
-        db.session.add(AggregatedChannel(show_id=sid, channel_id=cid))
-    elif not state and existing:
-        db.session.delete(existing)
+    if not existing:
+        # If it doesn't exist, create it. Note: state is used as initial is_enabled
+        db.session.add(AggregatedChannel(show_id=sid, channel_id=cid, is_enabled=state))
+    else:
+        # If it exists, just flip the enabled bit. 
+        # This preserves the record even if 'disabled'
+        existing.is_enabled = state
     
     db.session.commit()
     return jsonify({"status": "success"})
@@ -152,10 +158,10 @@ def toggle_video():
     if not sid or not vid: return jsonify({"status": "error", "message": "Missing IDs"}), 400
 
     existing = db.session.scalars(db.select(AggregatedVideo).filter_by(show_id=sid, video_id=vid)).first()
-    if state and not existing:
-        db.session.add(AggregatedVideo(show_id=sid, video_id=vid))
-    elif not state and existing:
-        db.session.delete(existing)
+    if not existing:
+        db.session.add(AggregatedVideo(show_id=sid, video_id=vid, is_enabled=state))
+    else:
+        existing.is_enabled = state
         
     db.session.commit()
     return jsonify({"status": "success"})
@@ -181,6 +187,7 @@ def get_aggregated_video_metadata(show_id, video_id):
     if av:
         show = db.session.get(AggregatedShow, show_id)
         modified = {
+            'is_enabled': av.is_enabled,
             'title': av.title if av.title is not None else v.title,
             'plot': av.description if av.description is not None else v.description,
             'aired': av.published_at if av.published_at is not None else v.published_at,
