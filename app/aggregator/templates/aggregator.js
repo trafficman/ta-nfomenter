@@ -111,7 +111,11 @@ async function selectShow(id, name) {
 }
 
 async function refreshShowPreview() {
-    if (!currentShowId) return;
+    if (!currentShowId) {
+        // If no show is selected, ensure the filter isn't hiding everything
+        document.querySelectorAll('#right-pane .channel-group').forEach(el => el.classList.remove('ineligible-channel'));
+        return;
+    }
 
     // Fetch joins for this show
     try {
@@ -120,6 +124,7 @@ async function refreshShowPreview() {
         
         // Update Right Pane (Source) state
         document.querySelectorAll('#right-pane .item-row').forEach(el => el.classList.add('is-dimmed'));
+        document.querySelectorAll('#right-pane .channel-group').forEach(el => el.classList.add('ineligible-channel'));
         document.querySelectorAll('.source-toggle').forEach(el => el.checked = false);
 
         // Update Channels in Right Pane (Source)
@@ -127,7 +132,11 @@ async function refreshShowPreview() {
             const row = document.getElementById(`right-item-${id}`);
             if (!row) return;
             
-            if (enabled) row.classList.remove('is-dimmed');
+            if (enabled) {
+                row.classList.remove('is-dimmed');
+                const group = row.closest('.channel-group');
+                if (group) group.classList.remove('ineligible-channel');
+            }
 
             const cb = row.querySelector('.source-toggle');
             if (cb) cb.checked = enabled;
