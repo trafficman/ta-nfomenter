@@ -4,7 +4,7 @@
 
 ### Are you ready to ~~N~~**FOment** some rebellion against... hard to navigate... folder structures...?
 
-Have you ever wished that your TubeArchivist folder was a little less `/youtube/UCuAXFkgsw1L7xaCfnd5JJOw/dQw4w9WgXcQ.mp4` and a little more `/YouTube/LGR (2009)/Running Doom on a Calculator!.mp4`? Have you ever wished you could sync only a select few of your archived channels to Plex or Jellyfin, or maybe even edit their metadata beforehand? If your answer is yes to either of these, then NFOmenter may be for you!
+Have you ever wished that your TubeArchivist folder was a little less `/youtube/UCuAXFkgsw1L7xaCfnd5JJOw/dQw4w9WgXcQ.mp4` and a little more `/YouTube/LGR (2009)/Running Doom on a Calculator!.mp4`? Have you ever wished you could sync only a select few of your archived YouTube channels to Plex or Jellyfin, or maybe even edit their metadata beforehand? What about combining videos from multiple channels into a single "Show"? If your answer is yes to any of these, then NFOmenter may be for you!
 
 **NFOmenter**, at its core, is a way to selectively translate a [TubeArchivist](https://github.com/tubearchivist/tubearchivist) install into a folder of custom TV shows that most media servers can ingest. It takes the YouTube metadata stored in your TA and uses it to write a parallel human-readable folder structure with `.nfo` local metadata files and images that things like Plex, Jellyfin, Emby, Kodi, etc will read.
 
@@ -12,28 +12,34 @@ In addition, a mirrored dual pane editor, with the TA ("Source") metadata on the
 
 If you find any bugs, make an issue here (**NOT** the official TA github), or hit me up on discord.
 
-AI Disclaimer: Gemini inked 95% of this code, with architectural decisions and every line reviewed by me (a very amateur coder, so don't expect too much), how vibecoded you consider this depends on how much you trust my ability to sight-read python
+AI Disclaimer: Gemini inked 95% of this code, with architectural decisions and every line reviewed by me (a very amateur coder, so don't expect too much), how vibecoded you consider this depends on how much you trust my ability to sight-read python.
+
+## **Common Use Cases**
+- You want a human readable copy of your TubeArchivist folder.
+- You have a large TA library, and want to import it into Plex or Jellyfin, but you don't want *every* single channel/video.
+- You want to import channels/videos but with metadata modifications baked in.
+- You want to combine videos from multiple channels into a custom made "Show" (e.g. You have archived a real TV show from YouTube, but across multiple channels, and want to reconstruct it)
 
 ## **Features**
 - **Touches Zero TubeArchivist Files:** Leaves your TA files completely intact, only ever reading from them. TA will continue to function as if NFOmenter is not even there.
 - **Remotely Deployable:** Deploys via Docker and controlled via WebUI, easily integrating into any TA environment, whether local or remote.
 - **Web Based Editor:** Simple dual-pane editor, select the channels (and their videos) you want to convert into TV shows on the right ("Source") pane, edit them on the left ("Destination") pane.
+- **Multi-Channel Aggregator:** Combine videos from any number of YouYube channels into one single "Show".
 - **Gives Media Servers Everything they Need:** Not just metadata (`.nfo` files), but images (poster, banner, background, thumbnails), and subtitles too, all conveniently pulled from your TA install.
 - **Human Readable Folder Structure:** Output ("Destination") is human readable, channel folders and videos inherit their YouTube titles, making for easy navigation at the file level.
 - **Uses No Hard Drive Space:** Uses hardlinks rather than file copies so that original TA files may be duplicated and renamed without taking up additional space (however, there are important install instructions to ensure this).
 - **Bidirectional Sync:** TubeArchivist is the "Source" of truth, download a new video there, sync and export in NFOmenter, and it will show up in the appropriate folder. Same goes for deletions, delete a video or even an entire channel in TA, and on sync and export it will be removed from the "Destination" folder.
 
 ## **Roadmap**
-- **Multi-Channel Aggregator:** Implement the multi-channel show builder. The primary purpose of this project is a 1:1 conversion of YouTube channels to TV shows, the aggregator is similar in fuction but is instead an N:1 conversion: Videos from multiple YouTube channels can be combined into a singular TV show. This must be separated off into a separate UI as, with the constraints of the mirrored dual pane editor, I couldn't come up with a good way to fit wholly new content into only one side.
+- [x] **Multi-Channel Aggregator:** Implement the multi-channel show builder. The primary purpose of this project is a 1:1 conversion of YouTube channels to TV shows, the aggregator is similar in fuction but is instead an N:1 conversion: Videos from multiple YouTube channels can be combined into a singular TV show. This must be separated off into a separate UI as, with the constraints of the mirrored dual pane editor, I couldn't come up with a good way to fit wholly new content into only one side.
   - **UI:** Similarly dual paned editor, but not mirrored, and having an extra column on the left.
       From right to left:
       - **Source Pane:** Exactly the same as the 1:1 Single-Channel Editor, simply lists all available channels and their videos.
       - **Destination Pane:** Represents a single custom aggregated TV show. Not mirrored, begins completely empty, and "episodes" are added from the source pane, picked from available channels and videos. Episodes are able to be edited in a similar manner to the regular 1:1 editor.
-      - **Show List:** A new, third column on the far left. Contains the list of desired custom aggregated shows, and a means to add new ones. When a show is selected from the list, the editor pane now reflects that show's currently selected YouTube videos.
-- **LLM Integration:** Integrate with a local LLM to optionally generate episode plot summaries based on video transcripts.
-- **Database Rebuild:** With a fresh install, given both an existing source and destination, rebuild database modifications by diffing the two. Essentially allow stored files to function as a database backup.
-- **Properly Document API**
-- **Search:** Filter list by various channel/video fields.
+      - **Show List:** A dropdown on top of the left pane. Contains the list of desired custom aggregated shows, and a means to add new ones. When a show is selected from the list, the editor pane now reflects that show's currently selected YouTube videos.
+- [ ] **LLM Integration:** Integrate with a local LLM to optionally generate episode plot summaries based on video transcripts.
+- [ ] **Database Rebuild:** With a fresh install, given both an existing source and destination, rebuild database modifications by diffing the two. Essentially allow stored files to function as a database backup.
+- [ ] **Search:** Filter list by various channel/video fields.
 
 ## **Install**
 
@@ -99,12 +105,18 @@ Once the container is running, access the WebUI at `http://<your-ip>:2960`.
 
 ## **Usage**
 
+### **Single-Channel Editor**
+
 **TL;DR**: 
 1. Load WebUI and toggle on desired channels.
 2. Press **Sync TA** to fetch video lists.
 3. Click on items to modify metadata (Press **Stage Changes** for each item!).
 4. Press **Run Export** to create the folders and NFOs.
 5. Point your media server at the **Destination** folder.
+
+<details>
+
+<summary>Detailed step-by-step usage instructions</summary>
 
 ### Step 0:
 Visit the WebUI in a browser (if hosted locally, should be located at something like "http://localhost:2960"), on page load, NFOmenter will query the TubeArchivist API and populate the right Source pane with all available channels.
@@ -133,6 +145,19 @@ With a channel or video selected, in the lower left will be the editing panel. A
 Once you've completed picking and/or modifying the channels and videos you want to include in your Destination TV shows folder, in the upper right, click the green "Run Export" button (it may take a while to complete, just let it run until the "Exporting..." text is replaced with "Export Finished!"). NFOmenter will create all the appropriate TV Shows with their associated metadata files and images, check your Destination folder to make sure everything looks right. Finally, point your media server of choice at this folder and enjoy!
 
 <img width="210" height="308" alt="image" src="https://github.com/user-attachments/assets/7562f2be-4cc2-4969-9b84-3afadeade723" />
+
+</details>
+
+## **Multi-Channel Aggregator**
+
+**TL;DR**:
+1. Create or select an Aggregated Show from the drop down.
+2. Toggle on desired channels from the Source Layer on the right (Press Sync TA if videos are not already populated).
+3. Videos default to disabled, toggle on as desired and they will appear on the left (sorted into seasons).
+4. Select videos and edit their metadata on the left (**IMPORTANT**, press **Stage Changes** after each).
+5. Press Run Export, your custom Aggregated Shows will appear alongside your regular Single-Channel Editor ones.
+
+Step-by-step instructions coming soon.
 
 ### Maintenance Menu:
 - **Deletion Sync**: Queries TubeArchivist looking for videos or channels that have been deleted since the last sync. If any are found, they will be shown in the UI and you will be asked for confirmation before their hardlinks are deleted from the Destination folder. Relegated to a manual maintence task because it's very I/O intensive, and to ensure a human is in the loop before any files are deleted.
@@ -167,4 +192,4 @@ Once you've completed picking and/or modifying the channels and videos you want 
 - **Eligible (Channel):** A boolean flag. If `False`, the entire channel folder is removed from the Destination (or never exported in the first place).
 - **Enabled (Video):** A boolean flag. If `False`, the specific video file is removed from the Destination (or never exported in the first place).
 - **Override:** User-defined metadata (Title, Plot, etc.) stored in the DB that replaces the original TA metadata during Export.
-- **Aggregator:** (Planned) A feature to group videos from different channels into a custom "Show" (e.g., a "News" show containing clips from multiple sources).
+- **Aggregator:** A feature to group videos from different channels into a custom "Show" (e.g., a "News" show containing clips from multiple sources).
