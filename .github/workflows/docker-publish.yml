@@ -12,9 +12,9 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 # This prevents redundant builds when pushing a branch and a tag simultaneously.
-# If two jobs trigger for the same commit (SHA), the second one will cancel the first.
+# We include the ref to ensure tag-triggered releases aren't cancelled by branch pushes.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.sha }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
