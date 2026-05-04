@@ -273,7 +273,12 @@ async function apiSaveMetadata(id, endpoint = '/api/save_override') {
 async function syncAll() {
     updateStatus("Syncing...", 0);
     const r = await fetch('/api/sync_all', { method: 'POST' });
-    if (r.ok) window.location.reload();
+    if (r.ok) {
+        if (window.location.pathname.includes('/aggregator/')) {
+            sessionStorage.setItem('aggregator_reload', 'true');
+        }
+        window.location.reload();
+    }
 }
 
 async function runExport() {

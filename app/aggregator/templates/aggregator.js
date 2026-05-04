@@ -110,6 +110,10 @@ async function toggleVideo(id, state) {
 
 async function selectShow(id, name) {
     currentShowId = id;
+    // Store for persistence through programmatic reloads (sync, etc)
+    sessionStorage.setItem('current_agg_show_id', id);
+    sessionStorage.setItem('current_agg_show_name', name);
+
     document.getElementById('current-show-name').textContent = name;
     document.getElementById('no-show-selected').classList.add('hidden');
 
@@ -281,13 +285,31 @@ async function submitEditShow() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(payload)
         });
-        if (r.ok) window.location.reload();
+        if (r.ok) {
+            sessionStorage.setItem('aggregator_reload', 'true');
+            window.location.reload();
+        }
         else alert("Update failed.");
     } catch (e) {
         console.error(e);
         alert("Network error.");
     }
 }
+
+// Aggregator Initialization Logic
+document.addEventListener('DOMContentLoaded', () => {
+    const isProgrammatic = sessionStorage.getItem('aggregator_reload');
+    if (isProgrammatic) {
+        const id = sessionStorage.getItem('current_agg_show_id');
+        const name = sessionStorage.getItem('current_agg_show_name');
+        if (id && name) selectShow(id, name);
+        sessionStorage.removeItem('aggregator_reload');
+    } else {
+        // Clean slate for manual refreshes or fresh navigation
+        sessionStorage.removeItem('current_agg_show_id');
+        sessionStorage.removeItem('current_agg_show_name');
+    }
+});
 
 async function confirmDeleteShow() {
     const id = document.getElementById('edit-show-id').value;
