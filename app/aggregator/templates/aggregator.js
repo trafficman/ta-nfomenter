@@ -5,6 +5,7 @@ async function handleItemClick(el) {
     if (!el.dataset.id) return;
     activeId = el.dataset.id;
     const isChannel = activeId.startsWith('UC');
+    const isRightClick = el.id.startsWith('right-item-');
 
     document.querySelectorAll('.item-row').forEach(r => r.classList.remove('selected-item'));
     const rightItem = document.getElementById(`right-item-${activeId}`);
@@ -12,6 +13,18 @@ async function handleItemClick(el) {
     
     const leftItem = document.getElementById(`left-item-${activeId}`);
     if (leftItem) leftItem.classList.add('selected-item');
+
+    // Sync scrolling to item for the opposite pane
+    const oppositeEl = isRightClick ? leftItem : rightItem;
+    if (oppositeEl) {
+        const parentTree = oppositeEl.closest('.hidden');
+        if (parentTree) {
+            parentTree.classList.remove('hidden');
+            const tri = document.getElementById(parentTree.id.replace('tree-', 'tri-'));
+            if (tri) tri.classList.add('open');
+        }
+        oppositeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 
     let data;
     if (currentShowId && !isChannel) {
