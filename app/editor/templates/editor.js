@@ -9,11 +9,16 @@ let activeId = null;
 async function handleItemClick(el) {
     if (!el.dataset.id) return;
     activeId = el.dataset.id;
+    const isChannel = activeId.startsWith('UC');
     const isEligible = !document.getElementById(`left-item-${activeId}`).classList.contains('is-dimmed');
     document.querySelectorAll('.item-row').forEach(r => r.classList.remove('selected-item'));
     document.getElementById(`left-item-${activeId}`).classList.add('selected-item');
     document.getElementById(`right-item-${activeId}`).classList.add('selected-item');
         
+    // Toggle Manage Assets button visibility based on selection type
+    const assetsBtn = document.getElementById('manage-assets-btn');
+    if (assetsBtn) assetsBtn.classList.toggle('hidden', !(isChannel && isEligible));
+
     const data = await fetchMetadata(activeId);
     if (data) {
         renderMetadataFields(
@@ -41,6 +46,10 @@ async function handleSave() {
             }
         }
     }
+}
+
+function openAssetsModal() {
+    document.getElementById('assetsModal').classList.remove('hidden');
 }
 
 async function toggleChannel(id, state) {
