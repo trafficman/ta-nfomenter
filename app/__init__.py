@@ -18,6 +18,10 @@ def create_app(test_config=None):
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
         
+        custom_assets_dir = os.path.join(data_dir, 'custom_assets')
+        if not os.path.exists(custom_assets_dir):
+            os.makedirs(custom_assets_dir)
+
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(data_dir, 'nfomenter.db')
         app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 

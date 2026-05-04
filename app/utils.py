@@ -17,6 +17,7 @@ CACHE_CH = Path(os.getenv("CACHE_CH"))
 # --- SETTINGS MANAGEMENT ---
 DATA_DIR = Path(__file__).parent.parent / "data"
 SETTINGS_PATH = DATA_DIR / "settings.json"
+CUSTOM_ASSETS_DIR = DATA_DIR / "custom_assets"
 DEFAULT_SETTINGS = {
     "channel_naming_scheme": "{title} ({year})",
     "video_naming_scheme": "{showtitle} - {season}x{episode} - {title} [{id}]"
