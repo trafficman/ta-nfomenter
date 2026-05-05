@@ -48,10 +48,6 @@ async function handleSave() {
     }
 }
 
-function openAssetsModal() {
-    document.getElementById('assetsModal').classList.remove('hidden');
-}
-
 async function toggleChannel(id, state) {
     const r = await apiToggleChannel(id, state);
     if (r.ok) window.location.reload();

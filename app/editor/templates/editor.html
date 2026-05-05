@@ -55,23 +55,6 @@
         </div>
         {% endfor %}
     </section>
-
-    <!-- Custom Assets Modal Placeholder -->
-    <div id="assetsModal" class="hidden fixed inset-0 bg-black/80 z-[100] flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-gray-800 border border-gray-700 rounded-lg shadow-2xl w-full max-w-md p-6">
-            <h3 class="text-xl font-bold text-gray-100 border-b border-gray-700 pb-3 mb-4 uppercase tracking-wider">Manage Custom Assets</h3>
-            
-            <div class="space-y-4 py-4 text-gray-300 text-sm">
-                <p>This is a placeholder for the custom assets management interface.</p>
-                <p class="text-xs text-gray-500 italic">Instructions and folder creation logic will be added here in the next step.</p>
-            </div>
-
-            <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-700">
-                <button onclick="document.getElementById('assetsModal').classList.add('hidden')" 
-                        class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded text-xs font-bold transition-colors">CLOSE</button>
-            </div>
-        </div>
-    </div>
 {% endblock %}
 
 {% block extra_js %}

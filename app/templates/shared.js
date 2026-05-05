@@ -127,6 +127,14 @@ async function fetchMetadata(id) {
     return await r.json();
 }
 
+function openAssetsModal() {
+    document.getElementById('assetsModal').classList.remove('hidden');
+}
+
+function closeAssetsModal() {
+    document.getElementById('assetsModal').classList.add('hidden');
+}
+
 /**
  * Standardized component for locked/empty states in panels.
  */

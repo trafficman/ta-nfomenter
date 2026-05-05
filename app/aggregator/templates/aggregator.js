@@ -223,7 +223,7 @@ function openCreateShowModal() {
     document.getElementById('createShowModal').classList.remove('hidden');
 }
 
-async function submitCreateShow() {
+async function submitCreateShow(andManageAssets = false) {
     const name = document.getElementById('new-show-name').value;
     const description = document.getElementById('new-show-desc').value;
     const studio = document.getElementById('new-show-studio').value;
@@ -242,6 +242,13 @@ async function submitCreateShow() {
         });
         const data = await r.json();
         if (data.status === 'success') {
+            if (andManageAssets) {
+                // Flag to open assets modal and select the new show after reload
+                sessionStorage.setItem('aggregator_reload', 'true');
+                sessionStorage.setItem('current_agg_show_id', data.id);
+                sessionStorage.setItem('current_agg_show_name', name);
+                sessionStorage.setItem('open_assets_modal_pending', 'true');
+            }
             window.location.reload();
         } else {
             alert("Error: " + data.message);
@@ -303,6 +310,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = sessionStorage.getItem('current_agg_show_id');
         const name = sessionStorage.getItem('current_agg_show_name');
         if (id && name) selectShow(id, name);
+
+        if (sessionStorage.getItem('open_assets_modal_pending')) {
+            openAssetsModal();
+            sessionStorage.removeItem('open_assets_modal_pending');
+        }
         sessionStorage.removeItem('aggregator_reload');
     } else {
         // Clean slate for manual refreshes or fresh navigation
