@@ -1,5 +1,6 @@
 let activeId = null;
 let currentShowId = null;
+let currentShowName = null;
 
 async function handleItemClick(el) {
     if (!el.dataset.id) return;
@@ -110,6 +111,7 @@ async function toggleVideo(id, state) {
 
 async function selectShow(id, name) {
     currentShowId = id;
+    currentShowName = name;
     // Store for persistence through programmatic reloads (sync, etc)
     sessionStorage.setItem('current_agg_show_id', id);
     sessionStorage.setItem('current_agg_show_name', name);
@@ -259,6 +261,12 @@ async function submitCreateShow(andManageAssets = false) {
     }
 }
 
+function openAssetsModalFromEdit() {
+    const id = document.getElementById('edit-show-id').value;
+    const name = document.getElementById('edit-show-name').value;
+    if (id && name) openAssetsModal(id, name);
+}
+
 async function openEditShowModal(id) {
     try {
         const r = await fetch(`/aggregator/api/get_show/${id}`);
@@ -293,6 +301,11 @@ async function submitEditShow() {
             body: JSON.stringify(payload)
         });
         if (r.ok) {
+            // If we renamed the currently selected show, update the session storage 
+            // so the new name persists through the reload.
+            if (id === currentShowId) {
+                sessionStorage.setItem('current_agg_show_name', payload.name);
+            }
             sessionStorage.setItem('aggregator_reload', 'true');
             window.location.reload();
         }
@@ -312,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (id && name) selectShow(id, name);
 
         if (sessionStorage.getItem('open_assets_modal_pending')) {
-            openAssetsModal();
+            openAssetsModal(id, name);
             sessionStorage.removeItem('open_assets_modal_pending');
         }
         sessionStorage.removeItem('aggregator_reload');

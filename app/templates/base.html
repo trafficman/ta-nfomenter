@@ -92,16 +92,34 @@
     <!-- Custom Assets Modal -->
     <div id="assetsModal" class="hidden fixed inset-0 bg-black/80 z-[100] flex items-center justify-center backdrop-blur-sm">
         <div class="bg-gray-800 border border-gray-700 rounded-lg shadow-2xl w-full max-w-md p-6">
-            <h3 class="text-xl font-bold text-gray-100 border-b border-gray-700 pb-3 mb-4 uppercase tracking-wider">Manage Custom Assets</h3>
+            <h3 class="text-xl font-bold text-gray-100 border-b border-gray-700 pb-3 mb-2 uppercase tracking-wider">Manage Custom Assets</h3>
+            <p id="asset-modal-selection" class="text-[10px] font-bold text-blue-400 uppercase mb-4">Selected: <span id="asset-modal-show-name" class="text-gray-300">None</span></p>
             
-            <div class="space-y-4 py-4 text-gray-300 text-sm">
-                <p>This is a placeholder for the custom assets management interface.</p>
-                <p class="text-xs text-gray-500 italic">Instructions and folder creation logic will be added here in the next step.</p>
+            <div class="space-y-4 text-gray-300 text-xs leading-relaxed">
+                <p>Apply custom images (Poster, Fanart, etc.) to any show as overrides to their defaults.</p>
+                
+                <div class="bg-gray-900/50 p-3 rounded border border-gray-700/50">
+                    <p class="font-bold text-gray-100 mb-1">Instructions:</p>
+                    <p>Click the button below to create a dedicated show folder in your <code class="text-blue-300">/data/custom_assets</code> directory (the same place you set in your docker compose to store your database). Deposit your desired image files there; they will be linked as overrides on the next export.</p>
+                </div>
+
+                <div>
+                    <p class="font-bold text-gray-100 mb-2 uppercase tracking-tighter">Supported Assets & Recommended Dimensions:</p>
+                    <ul class="grid grid-cols-1 gap-1 font-mono text-[10px]">
+                        <li class="flex justify-between border-b border-gray-700/30 pb-1"><span>banner.jpg</span> <span class="text-gray-500">1000x185px</span></li>
+                        <li class="flex justify-between border-b border-gray-700/30 pb-1"><span>fanart.jpg</span> <span class="text-gray-500">1920x1080px</span></li>
+                        <li class="flex justify-between"><span>poster.jpg</span> <span class="text-gray-500">1000x1500px</span></li>
+                    </ul>
+                </div>
             </div>
 
-            <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-700">
+            <div class="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-700">
+                <input type="hidden" id="asset-modal-show-id">
+                <input type="hidden" id="asset-modal-name-raw">
                 <button onclick="closeAssetsModal()" 
-                        class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded text-xs font-bold transition-colors">CLOSE</button>
+                        class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded text-[10px] font-bold transition-colors uppercase">Cancel</button>
+                <button id="create-asset-folder-btn" onclick="submitCreateAssetFolder()" 
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-[10px] font-bold transition-colors uppercase">Create Asset Folder</button>
             </div>
         </div>
     </div>

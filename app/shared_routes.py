@@ -7,7 +7,7 @@ from .utils import (
     get_channel_dest_path, safe_delete_channel_folder, nfo_needs_update,
     write_xml, CACHE_CH, sanitize, read_nfo_id, safe_cleanup_video,
     SOURCE_DIR, CACHE_VID, get_aggregated_show_dest_path, get_aggregated_metadata,
-    scan_for_deletions
+    scan_for_deletions, create_custom_asset_folder
 )
 
 main_bp = Blueprint('main', __name__)
@@ -322,3 +322,14 @@ def refresh_metadata():
         db.session.commit()
     
     return jsonify({"status": "success", "report": report})
+
+@main_bp.route('/api/create_asset_folder', methods=['POST'])
+def create_asset_folder():
+    data = request.json
+    item_id = data.get('id')
+    name = data.get('name')
+    if not item_id or not name:
+        return jsonify({"status": "error", "message": "Missing ID or Name"}), 400
+    
+    folder_name = create_custom_asset_folder(item_id, name)
+    return jsonify({"status": "success", "folder": folder_name})

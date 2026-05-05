@@ -48,6 +48,13 @@ async function handleSave() {
     }
 }
 
+function openAssetsModalEditor() {
+    if (!activeId) return;
+    const label = document.querySelector(`#left-item-${activeId} .truncate span`);
+    const name = label ? label.textContent : "Unknown Channel";
+    openAssetsModal(activeId, name);
+}
+
 async function toggleChannel(id, state) {
     const r = await apiToggleChannel(id, state);
     if (r.ok) window.location.reload();

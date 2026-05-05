@@ -127,8 +127,37 @@ async function fetchMetadata(id) {
     return await r.json();
 }
 
-function openAssetsModal() {
+function openAssetsModal(id, name) {
+    document.getElementById('asset-modal-show-name').textContent = name;
+    document.getElementById('asset-modal-show-id').value = id;
+    document.getElementById('asset-modal-name-raw').value = name;
     document.getElementById('assetsModal').classList.remove('hidden');
+}
+
+async function submitCreateAssetFolder() {
+    const id = document.getElementById('asset-modal-show-id').value;
+    const name = document.getElementById('asset-modal-name-raw').value;
+    const btn = document.getElementById('create-asset-folder-btn');
+    
+    btn.disabled = true;
+    btn.textContent = "CREATING...";
+
+    const r = await fetch('/api/create_asset_folder', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ id, name })
+    });
+
+    btn.disabled = false;
+    btn.textContent = "CREATE ASSET FOLDER";
+
+    if (r.ok) {
+        const data = await r.json();
+        updateStatus(`✅ Folder Created: ${data.folder}`);
+        closeAssetsModal();
+    } else {
+        alert("Failed to create folder.");
+    }
 }
 
 function closeAssetsModal() {

@@ -71,6 +71,28 @@ def sanitize(name):
     for char in r'\/:*?"<>|': name = name.replace(char, "-")
     return " ".join(name.split()).strip()
 
+def create_custom_asset_folder(item_id, name):
+    """
+    Creates or renames a uniquely identified folder in custom_assets for a show/channel.
+    Ensures that if the show name changes, the folder is updated while keeping the same ID suffix.
+    """
+    safe_name = sanitize(name)
+    desired_folder_name = f"{safe_name} [{item_id}]"
+    target_path = CUSTOM_ASSETS_DIR / desired_folder_name
+
+    if CUSTOM_ASSETS_DIR.exists():
+        for item in CUSTOM_ASSETS_DIR.iterdir():
+            # Check if the folder suffix matches [item_id]
+            if item.is_dir() and item.name.endswith(f"[{item_id}]"):
+                if item.name != desired_folder_name:
+                    # ID found but name differs: rename it
+                    item.rename(target_path)
+                return desired_folder_name
+
+    # No existing folder with this ID suffix found, create a new one
+    target_path.mkdir(parents=True, exist_ok=True)
+    return desired_folder_name
+
 def is_hardlink_compatible(path1, path2):
     """
     Tests if hardlinks can be created between path1 and path2.
