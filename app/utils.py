@@ -71,6 +71,65 @@ def sanitize(name):
     for char in r'\/:*?"<>|': name = name.replace(char, "-")
     return " ".join(name.split()).strip()
 
+def export_video(show_root, video, v_meta, v_naming_scheme):
+    """
+    Handles the heavy lifting of exporting a single video:
+    naming, collision detection, update/rename logic, hardlinking, and NFO writing.
+    """
+    v_vars = {
+        'title': v_meta['title'], 'showtitle': v_meta['showtitle'],
+        'season': v_meta['season'], 'episode': v_meta['episode'], 'id': video.id
+    }
+    base_fn = v_naming_scheme
+    for k, val in v_vars.items():
+        base_fn = base_fn.replace(f"{{{k}}}", sanitize(val))
+    base_fn = " ".join(base_fn.split()).strip()
+
+    season_dir = show_root / f"Season {v_meta['season']}"
+
+    # Collision handling for video filenames
+    potential_nfo = season_dir / f"{base_fn}.nfo"
+    if potential_nfo.exists():
+        existing_uid = read_nfo_id(potential_nfo)
+        if existing_uid and existing_uid != video.id:
+            # Name is taken by a different video; append ID if not already there
+            if f"[{video.id}]" not in base_fn:
+                base_fn = f"{base_fn} [{video.id}]"
+    
+    target_nfo = season_dir / f"{base_fn}.nfo"
+
+    # Identify if an NFO for this video already exists somewhere in this show
+    existing_nfo = None
+    for nfo_file in show_root.rglob("*.nfo"):
+        if nfo_file.name == "tvshow.nfo": continue
+        if read_nfo_id(nfo_file) == video.id:
+            existing_nfo = nfo_file
+            break
+
+    if existing_nfo:
+        # If the NFO content is current and the file is in the right place, we're done.
+        if not nfo_needs_update(existing_nfo, v_meta) and str(existing_nfo) == str(target_nfo):
+            return
+        else:
+            # Metadata changed or location moved: wipe old files and re-export
+            safe_cleanup_video(show_root, video.id)
+    
+    season_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create Links from Source (Video + Subtitles)
+    src_f = SOURCE_DIR / video.channel_id
+    for f in src_f.glob(f"{video.id}*"):
+        if f.suffix.lower() in ['.mp4', '.vtt']:
+            dest = season_dir / f"{base_fn}{f.suffix.lower()}"
+            if not dest.exists(): os.link(f, dest)
+
+    # Video Thumbnails
+    t_src = CACHE_VID / video.id[0] / f"{video.id}.jpg"
+    t_dest = season_dir / f"{base_fn}-thumb.jpg"
+    if t_src.exists() and not t_dest.exists(): os.link(t_src, t_dest)
+
+    write_xml(target_nfo, "episodedetails", v_meta)
+
 def create_custom_asset_folder(item_id, name):
     """
     Creates or renames a uniquely identified folder in custom_assets for a show/channel.
