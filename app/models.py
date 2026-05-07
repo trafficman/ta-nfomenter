@@ -10,6 +10,7 @@ class Channel(db.Model):
     premiered = db.Column(db.String(10)) 
     oldest_year = db.Column(db.String(4), default="2005")
     studio = db.Column(db.String(100), default="YouTube")
+    has_custom_assets = db.Column(db.Boolean, default=False)
 
 class Video(db.Model):
     id = db.Column(db.String(50), primary_key=True)
@@ -37,6 +38,7 @@ class AggregatedShow(db.Model):
     oldest_year = db.Column(db.String(4), default="2005")
     studio = db.Column(db.String(100), default="YouTube")
     is_active = db.Column(db.Boolean, default=True)
+    has_custom_assets = db.Column(db.Boolean, default=False)
 
 class AggregatedChannel(db.Model):
     """Join table for AS and YouTube Channels"""
