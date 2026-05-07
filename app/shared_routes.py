@@ -232,4 +232,15 @@ def create_asset_folder():
         return jsonify({"status": "error", "message": "Missing ID or Name"}), 400
     
     folder_name = create_custom_asset_folder(item_id, name)
+
+    # Update database flag for the channel or show
+    chan = db.session.get(Channel, item_id)
+    if chan:
+        chan.has_custom_assets = True
+    else:
+        show = db.session.get(AggregatedShow, item_id)
+        if show:
+            show.has_custom_assets = True
+
+    db.session.commit()
     return jsonify({"status": "success", "folder": folder_name})
