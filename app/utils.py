@@ -20,7 +20,8 @@ SETTINGS_PATH = DATA_DIR / "settings.json"
 CUSTOM_ASSETS_DIR = DATA_DIR / "custom_assets"
 DEFAULT_SETTINGS = {
     "channel_naming_scheme": "{title} ({year})",
-    "video_naming_scheme": "{showtitle} - {season}x{episode} - {title} [{id}]"
+    "video_naming_scheme": "{showtitle} - {season}x{episode} - {title} [{id}]",
+    "last_aggregated_id": 0
 }
 
 def get_settings():
@@ -50,19 +51,33 @@ def get_active_channel_ids():
 
 def get_next_aggregated_id():
     """
-    Calculates the next available AggregatedShow ID in the format AS_N.
-    Parses existing IDs to find the highest current integer.
+    Calculates the next unique AggregatedShow ID (AS_N) using a persistent counter.
+    Ensures IDs are never reused even if the show is deleted.
     """
-    shows = db.session.scalars(db.select(AggregatedShow)).all()
-    nums = []
-    for s in shows:
-        if s.id and s.id.startswith("AS_"):
-            try:
-                # Extract the number after the underscore
-                nums.append(int(s.id.split('_')[1]))
-            except (ValueError, IndexError):
-                continue
-    return f"AS_{max(nums) + 1 if nums else 1}"
+    settings = get_settings()
+    last_id = settings.get("last_aggregated_id", 0)
+
+    # Initial seeding: if the counter is 0, scan DB and filesystem for existing history
+    if last_id == 0:
+        # Scan Database
+        for s in db.session.scalars(db.select(AggregatedShow)).all():
+            if s.id and s.id.startswith("AS_"):
+                try: last_id = max(last_id, int(s.id.split('_')[1]))
+                except: continue
+        
+        # Scan Filesystem for orphaned custom asset folders
+        if CUSTOM_ASSETS_DIR.exists():
+            for item in CUSTOM_ASSETS_DIR.iterdir():
+                if item.is_dir() and "[AS_" in item.name:
+                    try:
+                        num_str = item.name.split("[AS_")[-1].split("]")[0]
+                        last_id = max(last_id, int(num_str))
+                    except: continue
+
+    next_id_num = last_id + 1
+    settings["last_aggregated_id"] = next_id_num
+    save_settings(settings)
+    return f"AS_{next_id_num}"
 
 # --- HELPERS ---
 def sanitize(name):
