@@ -152,18 +152,25 @@ def create_custom_asset_folder(item_id, name):
     target_path.mkdir(parents=True, exist_ok=True)
     return desired_folder_name
 
-def export_show_assets(show_root, item_id, has_custom_assets):
+def export_show_assets(show_root, item_id, name, has_custom_assets):
     """
     Handles show-level assets (banner, poster, fanart).
     Priority: 1. Custom overrides in /data/custom_assets 
               2. Default TubeArchivist cache images (for YouTube channels)
     """
+    expected_folder_name = f"{sanitize(name)} [{item_id}]"
+    
     # Identify custom folder if enabled
     custom_folder = None
     if has_custom_assets and CUSTOM_ASSETS_DIR.exists():
         for item in CUSTOM_ASSETS_DIR.iterdir():
             if item.is_dir() and item.name.endswith(f"[{item_id}]"):
-                custom_folder = item
+                if item.name != expected_folder_name:
+                    # Rename folder to match current show name while keeping unique ID
+                    custom_folder = CUSTOM_ASSETS_DIR / expected_folder_name
+                    item.rename(custom_folder)
+                else:
+                    custom_folder = item
                 break
 
     # Map for TA defaults (YouTube Channels only)

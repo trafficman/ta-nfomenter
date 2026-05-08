@@ -94,7 +94,7 @@ def export_nfo():
             write_xml(chan_nfo_path, "tvshow", c_meta)
 
         # Handle show-level images (Defaults + Custom Overrides)
-        export_show_assets(show_root, chan.id, chan.has_custom_assets)
+        export_show_assets(show_root, chan.id, c_meta['title'], chan.has_custom_assets)
 
         videos = db.session.scalars(db.select(Video).filter_by(channel_id=chan.id)).all()
         for v in videos:
@@ -128,7 +128,7 @@ def export_nfo():
             write_xml(show_nfo_path, "tvshow", s_meta)
 
         # Handle show-level images (Custom Overrides)
-        export_show_assets(show_root, show.id, show.has_custom_assets)
+        export_show_assets(show_root, show.id, s_meta['title'], show.has_custom_assets)
 
         # Identify channels disabled specifically for this aggregated show
         disabled_channel_ids = set(db.session.scalars(
