@@ -12,13 +12,13 @@ In addition, a mirrored dual pane editor, with the TA ("Source") metadata on the
 
 If you find any bugs, make an issue here (**NOT** the official TA github), or hit me up on discord.
 
-AI Disclaimer: Gemini inked 95% of this code, with architectural decisions and every line reviewed by me (a very amateur coder, so don't expect too much), how vibecoded you consider this depends on how much you trust my ability to sight-read python.
+**AI Disclaimer:** Gemini inked 95% of this code, with architectural decisions and every line reviewed by me (a very amateur coder, so don't expect too much), how vibecoded you consider this depends on how much you trust my ability to sight-read python.
 
 ## **Common Use Cases**
 - You want a human readable copy of your TubeArchivist folder.
 - You have a large TA library, and want to import it into Plex or Jellyfin, but you don't want *every* single channel/video.
 - You want to import channels/videos but with metadata modifications baked in.
-- You want to combine videos from multiple channels into a custom made "Show" (e.g. You have archived a real TV show from YouTube, but across multiple channels, and want to reconstruct it)
+- You want to combine videos from multiple channels into a custom made "Show" (e.g. You have archived a real TV show from YouTube, but across multiple channels, and want to reconstruct it).
 
 ## **Features**
 - **Touches Zero TubeArchivist Files:** Leaves your TA files completely intact, only ever reading from them. TA will continue to function as if NFOmenter is not even there.
@@ -26,9 +26,10 @@ AI Disclaimer: Gemini inked 95% of this code, with architectural decisions and e
 - **Web Based Editor:** Simple dual-pane editor, select the channels (and their videos) you want to convert into TV shows on the right ("Source") pane, edit them on the left ("Destination") pane.
 - **Multi-Channel Aggregator:** Combine videos from any number of YouYube channels into one single "Show".
 - **Gives Media Servers Everything they Need:** Not just metadata (`.nfo` files), but images (poster, banner, background, thumbnails), and subtitles too, all conveniently pulled from your TA install.
+- **Customizable Image Assets:** Use the default images provided by TA as your show Poster and Background, or use your own custom images. 
 - **Human Readable Folder Structure:** Output ("Destination") is human readable, channel folders and videos inherit their YouTube titles, making for easy navigation at the file level.
 - **Uses No Hard Drive Space:** Uses hardlinks rather than file copies so that original TA files may be duplicated and renamed without taking up additional space (however, there are important install instructions to ensure this).
-- **Bidirectional Sync:** TubeArchivist is the "Source" of truth, download a new video there, sync and export in NFOmenter, and it will show up in the appropriate folder. Same goes for deletions, delete a video or even an entire channel in TA, and on sync and export it will be removed from the "Destination" folder.
+- **Syncs All Changes to TA:** TubeArchivist is the "Source" of truth, download a new video there, sync and export in NFOmenter, and it will show up in the appropriate folder. Same goes for deletions, delete a video or even an entire channel in TA, and on sync and export it will be removed from the "Destination" folder.
 
 ## **Roadmap**
 - [x] **Multi-Channel Aggregator:** Implement the multi-channel show builder. The primary purpose of this project is a 1:1 conversion of YouTube channels to TV shows, the aggregator is similar in fuction but is instead an N:1 conversion: Videos from multiple YouTube channels can be combined into a singular TV show. This must be separated off into a separate UI as, with the constraints of the mirrored dual pane editor, I couldn't come up with a good way to fit wholly new content into only one side.
@@ -73,7 +74,7 @@ services:
     volumes:
       # MOUNT THE SHARED PARENT FOLDER HERE
       - /path/to/your/shared/folder:/path/to/your/shared/folder
-      # Persist the database, default location will use/create a "data" folder in the folder that contains this compose.yml file
+      # Persist the database, settings, and custom assets, default location will use/create a "data" folder in the folder that contains this compose.yml file
       - ./data:/ta-nfomenter-dev/data
     environment:
       - TA_URL=http://your.TA.URL
@@ -148,18 +149,30 @@ Once you've completed picking and/or modifying the channels and videos you want 
 
 </details>
 
-## **Multi-Channel Aggregator**
+### **Multi-Channel Aggregator**
 
 **TL;DR**:
 1. Create or select an Aggregated Show from the drop down.
 2. Toggle on desired channels from the Source Layer on the right (Press Sync TA if videos are not already populated).
 3. Videos default to disabled, toggle on as desired and they will appear on the left (sorted into seasons).
 4. Select videos and edit their metadata on the left (**IMPORTANT**, press **Stage Changes** after each).
-5. Press Run Export, your custom Aggregated Shows will appear alongside your regular Single-Channel Editor ones.
+5. Press **Run Export**, your custom Aggregated Shows will appear alongside your regular Single-Channel Editor ones in the Destination folder.
 
 Step-by-step instructions coming soon.
 
-### Maintenance Menu:
+### **Custom Image Assets:**
+Custom overrides can optionally be applied to replace default or missing images. Requires that you have file system access to the `/data/custom_assets` mountpoint (I didn't want the security responsibility of managing file uploads from a web UI).
+
+- In the Single-Channel Editor, access the asset managing modal by selecting an eligible channel, and clicking the blue **Manage Assets** button in the upper right of the editor panel.
+- In the Multi-Channel Aggregator, it can be accessed either on Aggregated Show creation, by clicking the blue **Create (Manage Assets)** button, or, when editing an Aggregated Show, clicking the **Manage Assets** button in the upper right of the modal.
+
+1. Click the blue **Create Asset Folder** button.
+2. Navigate to NFOmenter's persistent `/data/custom_assets` folder.
+3. Find the show you want to modify's folder (naming scheme: `<show title> [<ID>]`)
+4. Name your custom image either `banner.jpg`, `fanart.jpg`, or `poster.jpg`, and deposit them into said folder.
+5. Click **Run Export**, and your custom image overrides should be applied in the Destination folder.
+
+### **Maintenance Menu:**
 - **Deletion Sync**: Queries TubeArchivist looking for videos or channels that have been deleted since the last sync. If any are found, they will be shown in the UI and you will be asked for confirmation before their hardlinks are deleted from the Destination folder. Relegated to a manual maintence task because it's very I/O intensive, and to ensure a human is in the loop before any files are deleted.
 - **Folder Name Sync**: Manually updates Destination show folder names based on current database info (Channel name, current known "premier" year). At time of writing I'm pretty sure this currently runs on each export, but for optimization reasons this may not remain the case (honestly it was a bit of a lazy bugfix), so a manual trigger is included regardless.
 - **Refresh Source Metadata:** Manually updates NFOmenter's Source metadata by pulling updated metadata directly from TA. 
