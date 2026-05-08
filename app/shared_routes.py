@@ -7,7 +7,7 @@ from .utils import (
     get_channel_dest_path, safe_delete_channel_folder, nfo_needs_update,
     write_xml, CACHE_CH, sanitize, read_nfo_id, safe_cleanup_video,
     SOURCE_DIR, CACHE_VID, get_aggregated_show_dest_path, get_aggregated_metadata,
-    scan_for_deletions, create_custom_asset_folder, export_video
+    scan_for_deletions, create_custom_asset_folder, export_video, export_show_assets
 )
 
 main_bp = Blueprint('main', __name__)
@@ -93,10 +93,8 @@ def export_nfo():
         if nfo_needs_update(chan_nfo_path, c_meta):
             write_xml(chan_nfo_path, "tvshow", c_meta)
 
-        art_map = {f"{chan.id}_banner.jpg": "banner.jpg", f"{chan.id}_thumb.jpg": "poster.jpg", f"{chan.id}_tvart.jpg": "fanart.jpg"}
-        for src_n, dest_n in art_map.items():
-            src, dest = CACHE_CH / src_n, show_root / dest_n
-            if src.exists() and not dest.exists(): os.link(src, dest)
+        # Handle show-level images (Defaults + Custom Overrides)
+        export_show_assets(show_root, chan.id, chan.has_custom_assets)
 
         videos = db.session.scalars(db.select(Video).filter_by(channel_id=chan.id)).all()
         for v in videos:
@@ -128,6 +126,9 @@ def export_nfo():
         show_nfo_path = show_root / "tvshow.nfo"
         if nfo_needs_update(show_nfo_path, s_meta):
             write_xml(show_nfo_path, "tvshow", s_meta)
+
+        # Handle show-level images (Custom Overrides)
+        export_show_assets(show_root, show.id, show.has_custom_assets)
 
         # Identify channels disabled specifically for this aggregated show
         disabled_channel_ids = set(db.session.scalars(

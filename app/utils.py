@@ -152,6 +152,54 @@ def create_custom_asset_folder(item_id, name):
     target_path.mkdir(parents=True, exist_ok=True)
     return desired_folder_name
 
+def export_show_assets(show_root, item_id, has_custom_assets):
+    """
+    Handles show-level assets (banner, poster, fanart).
+    Priority: 1. Custom overrides in /data/custom_assets 
+              2. Default TubeArchivist cache images (for YouTube channels)
+    """
+    # Identify custom folder if enabled
+    custom_folder = None
+    if has_custom_assets and CUSTOM_ASSETS_DIR.exists():
+        for item in CUSTOM_ASSETS_DIR.iterdir():
+            if item.is_dir() and item.name.endswith(f"[{item_id}]"):
+                custom_folder = item
+                break
+
+    # Map for TA defaults (YouTube Channels only)
+    ta_map = {
+        "banner.jpg": f"{item_id}_banner.jpg",
+        "poster.jpg": f"{item_id}_thumb.jpg",
+        "fanart.jpg": f"{item_id}_tvart.jpg"
+    } if item_id.startswith("UC") else {}
+
+    for asset_name in ["banner.jpg", "poster.jpg", "fanart.jpg"]:
+        dest = show_root / asset_name
+        custom_src = custom_folder / asset_name if custom_folder else None
+        
+        # 1. Process Custom Override
+        if custom_src and custom_src.exists():
+            # Break any existing hardlinks to prevent poisoning the source cache
+            if dest.exists(): os.remove(dest)
+            shutil.copy2(custom_src, dest)
+            continue
+
+        # 2. Process Fallback to TA Default
+        ta_src_name = ta_map.get(asset_name)
+        if ta_src_name:
+            ta_src = CACHE_CH / ta_src_name
+            if ta_src.exists():
+                # Link if missing OR if current file is not a link to this default
+                is_correct = False
+                if dest.exists():
+                    try: is_correct = os.path.samefile(ta_src, dest)
+                    except OSError: pass
+                
+                if not is_correct:
+                    if dest.exists(): os.remove(dest)
+                    try: os.link(ta_src, dest)
+                    except: pass
+
 def is_hardlink_compatible(path1, path2):
     """
     Tests if hardlinks can be created between path1 and path2.
